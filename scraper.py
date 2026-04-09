@@ -1,5 +1,5 @@
 """
-scraper.py - Power4 NBA Report using fallback.csv
+scraper.py - Power4 NBA Report (final clean version)
 """
 
 import os
@@ -16,7 +16,7 @@ FALLBACK_CSV = "data/fallback.csv"
 
 
 def fetch_projections_csv() -> pd.DataFrame:
-    """Load data from the uploaded fallback.csv."""
+    """Load data from fallback.csv."""
     if os.path.exists(FALLBACK_CSV):
         logger.info(f"Loading data from {FALLBACK_CSV}")
         df = pd.read_csv(FALLBACK_CSV)
@@ -28,7 +28,7 @@ def fetch_projections_csv() -> pd.DataFrame:
 
 
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """Improved column normalization for lineups.com CSV."""
+    """Robust column normalization for lineups.com CSV."""
     col_map = {
         "Player": "Name", "PLAYER": "Name",
         "Salary": "Salary", "SAL": "Salary",
@@ -49,13 +49,13 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     }
     df = df.rename(columns={k: v for k, v in col_map.items() if k in df.columns})
 
-    # Ensure required columns exist
+    # Ensure required columns
     required = ["Name", "Team", "Opp", "DVP", "Projection", "Salary", "Pts/$1k", "PTS", "AST", "REB"]
     for col in required:
         if col not in df.columns:
             df[col] = 0.0
 
-    # Coerce numeric columns
+    # Coerce numeric
     numeric_cols = ["DVP", "Projection", "Salary", "Pts/$1k", "PTS", "AST", "REB", "STL", "BLK", "Minutes"]
     for col in numeric_cols:
         if col in df.columns:
