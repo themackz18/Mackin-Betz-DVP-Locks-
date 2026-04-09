@@ -27,40 +27,41 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
 }
 
-# ── Fallback: use local CSV if scrape fails ────────────────────────────────
+# Fallback: use local CSV if scrape fails
 FALLBACK_CSV = "data/fallback.csv"
 
 
 def fetch_projections_csv() -> pd.DataFrame:
-    """Try to grab the CSV download link from lineups.com."""
-    logger.info(f"Fetching {LINEUPS_URL}")
+    """Improved scraper for lineups.com projections page."""
+    logger.info(f"Fetching projections from {LINEUPS_URL}")
     session = requests.Session()
     session.headers.update(HEADERS)
 
-    # lineups.com exposes a direct CSV export endpoint
-    csv_url = "https://www.lineups.com/nba/nba-fantasy-basketball-projections/download"
-    try:
-        r = session.get(csv_url, timeout=20)
-        r.raise_for_status()
-        from io import StringIO
-        df = pd.read_csv(StringIO(r.text))
-        logger.info(f"✅ CSV downloaded: {len(df)} rows")
-        return df
-    except Exception as e:
-        logger.warning(f"CSV download failed ({e}), trying page scrape...")
-
-    # Fallback: scrape the HTML table
-    try:
-        r = session.get(LINEUPS_URL, timeout=20)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "html.parser")
-        table = soup.find("table")
-        if table:
-            df = pd.read_html(str(table))[0]
-            logger.info(f"✅ HTML table scraped: {len(df)} rows")
-            return df
-    except Exception as e:
-        logger.warning(f"HTML scrape failed ({e})")
+    for attempt in range(2):  # retry once
+        try:
+            r = session.get(LINEUPS_URL, timeout=30)
+            r.raise_for_status()
+            soup = BeautifulSoup(r.text, "html.parser")
+            
+            # Find all tables and pick the most promising one (largest with player-like columns)
+            tables = soup.find_all("table")
+            logger.info(f"Found {len(tables)} tables on page")
+            
+            for i, table in enumerate(tables):
+                try:
+                    df = pd.read_html(str(table))[0]
+                    if len(df) > 20 and any(col in str(df.columns).upper() for col in ["PLAYER", "NAME", "PROJECTION", "SALARY"]):
+                        logger.info(f"✅ Successfully scraped table {i}: {len(df)} rows")
+                        logger.info(f"Sample columns: {list(df.columns[:10])}")
+                        return df
+                except Exception as table_err:
+                    logger.debug(f"Table {i} failed to parse: {table_err}")
+                    continue
+                    
+        except Exception as e:
+            logger.warning(f"Attempt {attempt+1} failed: {e}")
+            if attempt == 0:
+                time.sleep(3)  # short backoff before retry
 
     # Final fallback: use saved CSV
     if os.path.exists(FALLBACK_CSV):
@@ -73,7 +74,6 @@ def fetch_projections_csv() -> pd.DataFrame:
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Normalize column names to match our expected schema."""
     col_map = {
-        # lineups.com variations → our standard names
         "Player": "Name", "PLAYER": "Name",
         "Salary": "Salary", "SAL": "Salary",
         "Projection": "Projection", "FPTS": "Projection", "Proj": "Projection",
@@ -92,12 +92,6 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
         "REB": "REB", "Reb": "REB",
         "STL": "STL", "Stl": "STL",
         "BLK": "BLK", "Blk": "BLK",
-        "FT": "FT",
-        "FGA": "FGA",
-        "FGM": "FGM",
-        "PER": "PER",
-        "FG%": "FG%",
-        "eFG%": "eFG%",
         "Pos": "Pos", "Position": "Pos",
     }
     df = df.rename(columns={k: v for k, v in col_map.items() if k in df.columns})
@@ -119,7 +113,7 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# ── Analysis Engine ────────────────────────────────────────────────────────
+# ── Analysis Engine (unchanged from your original) ────────────────────────
 
 def build_combo_stats(df: pd.DataFrame) -> pd.DataFrame:
     df["PR"]  = df["PTS"] + df["REB"]
@@ -143,7 +137,6 @@ def best_cat(row):
 
 
 def detect_games(df: pd.DataFrame):
-    """Return list of (team1, team2) tuples from the dataframe."""
     games = set()
     teams = df["Team"].dropna().unique()
     opps  = dict(zip(df["Team"], df["Opp"]))
@@ -206,7 +199,6 @@ def build_multi_game_p4s(df: pd.DataFrame, games: list) -> list:
         {t: f"{t}/{o}" for t, o in zip(df["Team"], df["Opp"])}
     )
 
-    # Top 3 per game
     top_per_game = []
     for gk in game_keys:
         gdf = df2[df2["game"] == gk].sort_values("conf_score", ascending=False).head(3)
@@ -310,7 +302,7 @@ def run_daily_scrape(output_path: str):
     multi_game   = build_multi_game_p4s(df, games)
     cat_leaders  = build_category_leaders(df, games)
 
-    # Top locks (appear in most multi-game P4s)
+    # Top locks
     from collections import Counter
     name_counts = Counter()
     for combo in multi_game[:6]:
@@ -334,5 +326,5 @@ def run_daily_scrape(output_path: str):
     with open(output_path, "w") as f:
         json.dump(report, f, indent=2)
 
-    logger.info(f"Report saved to {output_path}")
+    logger.info(f"✅ Report saved to {output_path} with {len(games)} games")
     return report
