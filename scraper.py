@@ -1,5 +1,5 @@
 """
-scraper.py - Simple fallback version using data/fallback.csv
+scraper.py - Power4 NBA Report using fallback.csv
 """
 
 import os
@@ -28,7 +28,7 @@ def fetch_projections_csv() -> pd.DataFrame:
 
 
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """Normalize column names for lineups.com CSV."""
+    """Improved column normalization for lineups.com CSV."""
     col_map = {
         "Player": "Name", "PLAYER": "Name",
         "Salary": "Salary", "SAL": "Salary",
@@ -244,7 +244,7 @@ def run_daily_scrape(output_path: str):
     # Top locks
     name_counts = Counter()
     for combo in multi_game[:6]:
-        for p in combo["players"]:
+        for p in combo.get("players", []):
             name_counts[p["name"]] += 1
     top_locks = [
         {"name": n, "count": c, "pct": round(c / min(6, len(multi_game)) * 100)}
