@@ -9,6 +9,9 @@ from scraper import run_daily_scrape
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Ensure data directory exists at import time (works with gunicorn)
+os.makedirs("data", exist_ok=True)
+
 app = Flask(__name__)
 
 DATA_FILE = "data/latest_report.json"
@@ -52,9 +55,5 @@ def load_report():
 
 if __name__ == "__main__":
     os.makedirs("data", exist_ok=True)
-    # Run a scrape on startup if no data exists
-    if not os.path.exists(DATA_FILE):
-        logger.info("No data found — running initial scrape...")
-        scheduled_job()
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port, debug=False)
