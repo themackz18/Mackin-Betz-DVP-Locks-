@@ -1,5 +1,5 @@
 """
-scraper.py - Mackin Betz DVP Locks (with +EV and H2H edges)
+scraper.py - Mackin Betz DVP Locks (Full Working Version)
 """
 
 import os
@@ -16,6 +16,7 @@ FALLBACK_CSV = "data/fallback.csv"
 
 
 def fetch_projections_csv() -> pd.DataFrame:
+    """Load data from fallback.csv."""
     if os.path.exists(FALLBACK_CSV):
         logger.info(f"Loading data from {FALLBACK_CSV}")
         df = pd.read_csv(FALLBACK_CSV)
@@ -27,6 +28,7 @@ def fetch_projections_csv() -> pd.DataFrame:
 
 
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Robust column normalization."""
     col_map = {
         "Player": "Name", "PLAYER": "Name",
         "Salary": "Salary", "SAL": "Salary",
@@ -64,13 +66,11 @@ def build_combo_stats(df: pd.DataFrame) -> pd.DataFrame:
     df["PA"]  = df["PTS"] + df["AST"]
     df["RA"]  = df["REB"] + df["AST"]
     df["PRA"] = df["PTS"] + df["REB"] + df["AST"]
-    df["DVP_norm"] = df["DVP"] / 30
+    df["DVP_norm"]   = df["DVP"] / 30
     df["conf_score"] = df["Projection"] * df["DVP_norm"] * (df.get("Pts/$1k", 5) / 5)
-    df["ev"] = df["Projection"] - (df["Salary"] / 1000 * 5)   # Simple +EV calculation
+    df["ev"] = df["Projection"] - (df["Salary"] / 1000 * 5)   # +EV proxy
     return df
 
-
-# ... (the rest of the functions remain exactly the same as the last full version I gave you)
 
 def best_cat(row):
     cats = {
@@ -137,7 +137,92 @@ def build_same_game_p4s(df: pd.DataFrame, games: list) -> list:
     return results
 
 
-# (build_multi_game_p4s, build_category_leaders, and run_daily_scrape are identical to the last full version I gave you — they now include "ev" in players)
+def build_multi_game_p4s(df: pd.DataFrame, games: list) -> list:
+    game_keys = [f"{t1}/{t2}" for t1, t2 in games]
+    df2 = df.copy()
+    df2["game"] = df2["Team"].map({t: f"{t}/{o}" for t, o in zip(df["Team"], df["Opp"])})
+
+    top_per_game = []
+    for gk in game_keys:
+        gdf = df2[df2["game"] == gk].sort_values("conf_score", ascending=False).head(3)
+        top_per_game.extend(gdf.to_dict('records'))
+
+    pool_df = pd.DataFrame(top_per_game)
+    seen = set()
+    combos = []
+
+    for gc in combinations(game_keys, 4):
+        for slot_combo in [(0,0,0,0),(0,0,0,1),(0,0,1,0),(0,1,0,0),(1,0,0,0)]:
+            selected = []
+            for i, g in enumerate(gc):
+                idx = slot_combo[i] if i < len(slot_combo) else 0
+                pool = pool_df[pool_df["game"] == g].sort_values("conf_score", ascending=False)
+                if len(pool) > idx:
+                    selected.append(pool.iloc[idx])
+            if len(selected) != 4:
+                continue
+            sel_df = pd.DataFrame(selected)
+            key = tuple(sorted(sel_df["Name"].tolist()))
+            if key in seen:
+                continue
+            seen.add(key)
+
+            players = []
+            for _, r in sel_df.iterrows():
+                bc = best_cat(r)
+                players.append({
+                    "name": r["Name"],
+                    "team": r["Team"],
+                    "game": r["game"].replace("/", " vs "),
+                    "dvp": int(r["DVP"]),
+                    "proj": round(r["Projection"], 1),
+                    "val": round(r.get("Pts/$1k", 0), 1),
+                    "ev": round(r.get("ev", 0), 1),
+                    "best_cat": bc,
+                    "best_val": round(r[bc], 1),
+                })
+            combos.append({
+                "games_covered": [g.replace("/", " vs ") for g in gc],
+                "conf_score": round(sel_df["conf_score"].sum(), 1),
+                "total_proj": round(sel_df["Projection"].sum(), 1),
+                "avg_dvp": round(sel_df["DVP"].mean(), 1),
+                "players": players,
+            })
+
+    combos.sort(key=lambda x: x["conf_score"], reverse=True)
+    return combos[:10]
+
+
+def build_category_leaders(df: pd.DataFrame, games: list) -> list:
+    cats = {
+        "PTS": "Points", "AST": "Assists", "REB": "Rebounds",
+        "PR": "Pts+Reb", "PA": "Pts+Ast", "RA": "Reb+Ast", "PRA": "Pts+Reb+Ast"
+    }
+    result = []
+    for t1, t2 in games:
+        mask = df["Team"].isin([t1, t2])
+        gdf = df[mask].copy()
+        spread = gdf["Spread"].iloc[0] if "Spread" in gdf.columns else "N/A"
+        total = gdf["Total"].iloc[0] if "Total" in gdf.columns else "N/A"
+        game_cats = []
+        for col, label in cats.items():
+            top = gdf.nlargest(6, col)[["Name", "Team", "DVP", col]].to_dict("records")
+            game_cats.append({
+                "category": label,
+                "leaders": [
+                    {"name": r["Name"], "team": r["Team"],
+                     "dvp": int(r["DVP"]), "val": round(r[col], 1)}
+                    for r in top
+                ],
+            })
+        result.append({
+            "game": f"{t1} vs {t2}",
+            "spread": spread,
+            "total": total,
+            "categories": game_cats,
+        })
+    return result
+
 
 def run_daily_scrape(output_path: str):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -155,6 +240,7 @@ def run_daily_scrape(output_path: str):
     multi_game = build_multi_game_p4s(df, games)
     cat_leaders = build_category_leaders(df, games)
 
+    # Top locks
     name_counts = Counter()
     for combo in multi_game[:6]:
         for p in combo.get("players", []):
@@ -164,18 +250,6 @@ def run_daily_scrape(output_path: str):
         for n, c in name_counts.most_common(6)
     ]
 
-    # Simple H2H edge (DvP difference as proxy)
-    h2h_edges = []
-    for t1, t2 in games:
-        t1_dvp = df[df["Team"] == t1]["DVP"].mean()
-        t2_dvp = df[df["Team"] == t2]["DVP"].mean()
-        edge = "MIA edge" if t1_dvp > t2_dvp else "BOS edge"  # example — you can customize
-        h2h_edges.append({
-            "game": f"{t1} vs {t2}",
-            "edge": edge,
-            "dvp_diff": round(t1_dvp - t2_dvp, 1)
-        })
-
     report = {
         "generated_at": datetime.now().strftime("%B %d, %Y at %I:%M %p ET"),
         "slate_date": datetime.now().strftime("%A, %B %d"),
@@ -184,7 +258,6 @@ def run_daily_scrape(output_path: str):
         "multi_game_p4": multi_game,
         "category_leaders": cat_leaders,
         "top_locks": top_locks,
-        "h2h_edges": h2h_edges,   # new
     }
 
     with open(output_path, "w") as f:
