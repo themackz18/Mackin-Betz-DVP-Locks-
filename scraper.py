@@ -1,338 +1,344 @@
-"""
-scraper.py
-Fetches NBA fantasy projections from lineups.com and runs
-the full Power 4 / multi-game analysis engine.
-"""
+# scraper.py - Mackin Betz DVP Locks
 
 import os
 import json
-import time
 import logging
-import requests
 import pandas as pd
 from datetime import datetime
 from itertools import combinations
-from bs4 import BeautifulSoup
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(**name**)
+FALLBACK_CSV = “data/fallback.csv”
 
-LINEUPS_URL = "https://www.lineups.com/nba/nba-fantasy-basketball-projections"
+EDGE_LOCK  = 6.0
+EDGE_LEAN  = 3.0
+EDGE_DART  = 1.5
+MIN_DVP    = 15
+MIN_PROJ   = 5.0
 
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/122.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "en-US,en;q=0.9",
+PAYOUTS = {2: 3, 3: 5, 4: 10, 5: 20}
+
+PROP_CATS = [“PTS”, “REB”, “AST”, “STL”, “BLK”, “PR”, “PA”, “RA”, “PRA”, “3PM”]
+
+COL_MAP = {
+“Player”: “Name”, “PLAYER”: “Name”,
+“DvP”: “DVP”, “DVP”: “DVP”, “Dvp”: “DVP”,
+“Salary”: “Salary”, “SAL”: “Salary”,
+“Projection”: “Projection”, “FPTS”: “Projection”, “Proj”: “Projection”,
+“Pts/$1k”: “Value”, “VALUE”: “Value”, “Value”: “Value”, “Pts/$1K”: “Value”,
+“Team”: “Team”, “TEAM”: “Team”,
+“Opp”: “Opp”, “OPP”: “Opp”, “Opponent”: “Opp”,
+“Spread”: “Spread”, “SPREAD”: “Spread”,
+“Total”: “Total”, “TOTAL”: “Total”,
+“O/U”: “OU”, “OU”: “OU”,
+“Minutes”: “MINS”, “MIN”: “MINS”, “MINS”: “MINS”,
+“PTS”: “PTS”, “Pts”: “PTS”,
+“AST”: “AST”, “Ast”: “AST”,
+“REB”: “REB”, “Reb”: “REB”,
+“STL”: “STL”, “Stl”: “STL”,
+“BLK”: “BLK”, “Blk”: “BLK”,
+“FT”: “FT”, “FGA”: “FGA”, “FGM”: “FGM”,
+“FG%”: “FGpct”, “eFG%”: “eFGpct”,
+“PER”: “PER”, “USG%”: “USG”, “FPPM”: “FPPM”,
+“Pos”: “Pos”, “POS”: “Pos”, “Position”: “Pos”,
+“3PM”: “3PM”, “3P Made”: “3PM”,
 }
 
-# ── Fallback: use local CSV if scrape fails ────────────────────────────────
-FALLBACK_CSV = "data/fallback.csv"
+def fetch_projections_csv():
+if os.path.exists(FALLBACK_CSV):
+df = pd.read_csv(FALLBACK_CSV)
+logger.info(“Loaded %d rows”, len(df))
+return df
+raise RuntimeError(“fallback.csv not found - upload to data/ folder”)
 
+def normalize_columns(df):
+df = df.rename(columns={k: v for k, v in COL_MAP.items() if k in df.columns})
+for col in [“DVP”, “Projection”, “Salary”, “Value”, “PTS”, “AST”, “REB”,
+“STL”, “BLK”, “FT”, “FGA”, “FGM”, “FGpct”, “eFGpct”,
+“PER”, “USG”, “FPPM”, “MINS”, “Spread”, “Total”, “OU”, “3PM”]:
+if col not in df.columns:
+df[col] = 0.0
+numeric = [“DVP”, “Projection”, “Salary”, “Value”, “PTS”, “AST”, “REB”,
+“STL”, “BLK”, “FT”, “FGA”, “FGM”, “PER”, “USG”, “FPPM”,
+“MINS”, “Total”, “3PM”]
+for col in numeric:
+df[col] = pd.to_numeric(df[col], errors=“coerce”).fillna(0.0)
+for col in [“Spread”, “OU”]:
+df[col] = df[col].astype(str).str.replace(r”[^0-9.-]”, “”, regex=True)
+df[col] = pd.to_numeric(df[col], errors=“coerce”).fillna(0.0)
+return df
 
-def fetch_projections_csv() -> pd.DataFrame:
-    """Try to grab the CSV download link from lineups.com."""
-    logger.info(f"Fetching {LINEUPS_URL}")
-    session = requests.Session()
-    session.headers.update(HEADERS)
-
-    # lineups.com exposes a direct CSV export endpoint
-    csv_url = "https://www.lineups.com/nba/nba-fantasy-basketball-projections/download"
-    try:
-        r = session.get(csv_url, timeout=20)
-        r.raise_for_status()
-        from io import StringIO
-        df = pd.read_csv(StringIO(r.text))
-        logger.info(f"✅ CSV downloaded: {len(df)} rows")
-        return df
-    except Exception as e:
-        logger.warning(f"CSV download failed ({e}), trying page scrape...")
-
-    # Fallback: scrape the HTML table
-    try:
-        r = session.get(LINEUPS_URL, timeout=20)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "html.parser")
-        table = soup.find("table")
-        if table:
-            df = pd.read_html(str(table))[0]
-            logger.info(f"✅ HTML table scraped: {len(df)} rows")
-            return df
-    except Exception as e:
-        logger.warning(f"HTML scrape failed ({e})")
-
-    # Final fallback: use saved CSV
-    if os.path.exists(FALLBACK_CSV):
-        logger.warning("Using fallback CSV from disk.")
-        return pd.read_csv(FALLBACK_CSV)
-
-    raise RuntimeError("All data sources failed. No data available.")
-
-
-def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """Normalize column names to match our expected schema."""
-    col_map = {
-        # lineups.com variations → our standard names
-        "Player": "Name", "PLAYER": "Name",
-        "Salary": "Salary", "SAL": "Salary",
-        "Projection": "Projection", "FPTS": "Projection", "Proj": "Projection",
-        "Pts/$1k": "Pts/$1k", "VALUE": "Pts/$1k", "Value": "Pts/$1k",
-        "FPPM": "FPPM",
-        "USG%": "USG%", "USG": "USG%",
-        "Team": "Team", "TEAM": "Team",
-        "Opp": "Opp", "OPP": "Opp", "Opponent": "Opp",
-        "DVP": "DVP",
-        "Spread": "Spread",
-        "Total": "Total",
-        "O/U": "O/U",
-        "Minutes": "Minutes", "MIN": "Minutes", "Mins": "Minutes",
-        "PTS": "PTS", "Pts": "PTS",
-        "AST": "AST", "Ast": "AST",
-        "REB": "REB", "Reb": "REB",
-        "STL": "STL", "Stl": "STL",
-        "BLK": "BLK", "Blk": "BLK",
-        "FT": "FT",
-        "FGA": "FGA",
-        "FGM": "FGM",
-        "PER": "PER",
-        "FG%": "FG%",
-        "eFG%": "eFG%",
-        "Pos": "Pos", "Position": "Pos",
-    }
-    df = df.rename(columns={k: v for k, v in col_map.items() if k in df.columns})
-
-    # Ensure required columns exist
-    required = ["Name", "Team", "Opp", "DVP", "Projection", "Salary",
-                "Pts/$1k", "PTS", "AST", "REB"]
-    for col in required:
-        if col not in df.columns:
-            df[col] = 0
-
-    # Coerce numeric
-    numeric_cols = ["DVP", "Projection", "Salary", "Pts/$1k", "PTS", "AST",
-                    "REB", "STL", "BLK", "Minutes", "FPPM"]
-    for col in numeric_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
-
-    return df
-
-
-# ── Analysis Engine ────────────────────────────────────────────────────────
-
-def build_combo_stats(df: pd.DataFrame) -> pd.DataFrame:
-    df["PR"]  = df["PTS"] + df["REB"]
-    df["PA"]  = df["PTS"] + df["AST"]
-    df["RA"]  = df["REB"] + df["AST"]
-    df["PRA"] = df["PTS"] + df["REB"] + df["AST"]
-    df["DVP_norm"]   = df["DVP"] / 30
-    df["conf_score"] = (
-        df["Projection"] * df["DVP_norm"] * (df["Pts/$1k"] / 5)
-    )
-    return df
-
+def build_combo_stats(df):
+df[“PR”]  = df[“PTS”] + df[“REB”]
+df[“PA”]  = df[“PTS”] + df[“AST”]
+df[“RA”]  = df[“REB”] + df[“AST”]
+df[“PRA”] = df[“PTS”] + df[“REB”] + df[“AST”]
+dvp_max = df[“DVP”].max() if df[“DVP”].max() > 0 else 30
+df[“DVP_norm”] = df[“DVP”] / dvp_max
+val = df[“Value”].where(df[“Value”] > 0, 5.0)
+df[“conf_score”] = df[“Projection”] * df[“DVP_norm”] * (val / 5.0)
+return df
 
 def best_cat(row):
-    cats = {
-        "PTS": row["PTS"], "REB": row["REB"], "AST": row["AST"],
-        "PR":  row["PR"],  "PA":  row["PA"],  "RA":  row["RA"],
-        "PRA": row["PRA"],
-    }
-    return max(cats, key=cats.get)
+cats = {c: row.get(c, 0) for c in PROP_CATS if row.get(c, 0) > 0}
+return max(cats, key=cats.get) if cats else “PTS”
 
+def detect_games(df):
+games = set()
+opp_map = dict(zip(df[“Team”], df[“Opp”]))
+for team in df[“Team”].dropna().unique():
+opp = opp_map.get(team)
+if opp and (opp, team) not in games:
+games.add((team, opp))
+return list(games)
 
-def detect_games(df: pd.DataFrame):
-    """Return list of (team1, team2) tuples from the dataframe."""
-    games = set()
-    teams = df["Team"].dropna().unique()
-    opps  = dict(zip(df["Team"], df["Opp"]))
-    for team in teams:
-        opp = opps.get(team)
-        if opp and (opp, team) not in games:
-            games.add((team, opp))
-    return list(games)
+def fmt_player(row):
+bc = best_cat(row)
+return {
+“name”:       str(row.get(“Name”, “”)),
+“team”:       str(row.get(“Team”, “”)),
+“opp”:        str(row.get(“Opp”, “”)),
+“pos”:        str(row.get(“Pos”, “”)),
+“dvp”:        int(row.get(“DVP”, 0)),
+“proj”:       round(float(row.get(“Projection”, 0)), 1),
+“val”:        round(float(row.get(“Value”, 0)), 1),
+“mins”:       round(float(row.get(“MINS”, 0)), 1),
+“pts”:        round(float(row.get(“PTS”, 0)), 1),
+“reb”:        round(float(row.get(“REB”, 0)), 1),
+“ast”:        round(float(row.get(“AST”, 0)), 1),
+“stl”:        round(float(row.get(“STL”, 0)), 1),
+“blk”:        round(float(row.get(“BLK”, 0)), 1),
+“threepm”:    round(float(row.get(“3PM”, 0)), 1),
+“pr”:         round(float(row.get(“PR”, 0)), 1),
+“pa”:         round(float(row.get(“PA”, 0)), 1),
+“ra”:         round(float(row.get(“RA”, 0)), 1),
+“pra”:        round(float(row.get(“PRA”, 0)), 1),
+“best_cat”:   bc,
+“best_val”:   round(float(row.get(bc, 0)), 1),
+“conf_score”: round(float(row.get(“conf_score”, 0)), 2),
+“usg”:        round(float(row.get(“USG”, 0)), 1),
+“total”:      round(float(row.get(“Total”, 0)), 1),
+“spread”:     str(row.get(“Spread”, “N/A”)),
+}
 
+def build_same_game_p4s(df, games):
+results = []
+for t1, t2 in games:
+gdf = df[df[“Team”].isin([t1, t2])].copy().sort_values(“conf_score”, ascending=False)
+spread = str(gdf[“Spread”].iloc[0]) if len(gdf) else “N/A”
+total  = str(gdf[“Total”].iloc[0])  if len(gdf) else “N/A”
+ou     = str(gdf[“OU”].iloc[0])     if len(gdf) else “N/A”
+alpha  = gdf.head(4)
+alt    = gdf.iloc[4:8]
+results.append({
+“game”:       t1 + “ vs “ + t2,
+“spread”:     spread,
+“total”:      total,
+“ou”:         ou,
+“alpha”:      [fmt_player(r) for _, r in alpha.iterrows()],
+“alpha_conf”: round(float(alpha[“conf_score”].sum()), 1),
+“alpha_proj”: round(float(alpha[“Projection”].sum()), 1),
+“alpha_dvp”:  round(float(alpha[“DVP”].mean()), 0),
+“alt”:        [fmt_player(r) for _, r in alt.iterrows()],
+“alt_conf”:   round(float(alt[“conf_score”].sum()), 1) if len(alt) else 0,
+“alt_proj”:   round(float(alt[“Projection”].sum()), 1) if len(alt) else 0,
+})
+results.sort(key=lambda x: x[“alpha_conf”], reverse=True)
+return results
 
-def build_same_game_p4s(df: pd.DataFrame, games: list) -> list:
-    results = []
-    for t1, t2 in games:
-        mask = df["Team"].isin([t1, t2])
-        gdf  = df[mask].copy().sort_values("conf_score", ascending=False)
+def build_slips(df):
+pool = df[
+(df[“Projection”] >= MIN_PROJ) &
+(df[“DVP”] >= MIN_DVP)
+].copy().sort_values(“conf_score”, ascending=False).head(40).reset_index(drop=True)
 
-        spread = gdf["Spread"].iloc[0] if "Spread" in gdf.columns else "N/A"
-        total  = gdf["Total"].iloc[0]  if "Total"  in gdf.columns else "N/A"
+```
+slips_by_legs = {n: [] for n in range(2, 6)}
+seen_keys = set()
 
-        alpha = gdf.head(4)
-        alt   = gdf.iloc[4:8]
+for n_legs in range(2, 6):
+    rows_list = [dict(row) for _, row in pool.iterrows()]
+    for combo in combinations(rows_list, n_legs):
+        rows = list(combo)
+        cats = [best_cat(r) for r in rows]
+        if len(set(cats)) < n_legs:
+            continue
+        names = tuple(sorted(r["Name"] for r in rows))
+        if names in seen_keys:
+            continue
+        seen_keys.add(names)
 
-        def fmt_players(pool):
-            players = []
-            for _, r in pool.iterrows():
-                bc  = best_cat(r)
-                bv  = r[bc]
-                players.append({
-                    "name":       r["Name"],
-                    "team":       r["Team"],
-                    "dvp":        int(r["DVP"]),
-                    "proj":       round(r["Projection"], 1),
-                    "val":        round(r["Pts/$1k"], 1),
-                    "best_cat":   bc,
-                    "best_val":   round(bv, 1),
-                    "conf_score": round(r["conf_score"], 1),
-                })
-            return players
+        total_conf = sum(float(r.get("conf_score", 0)) for r in rows)
+        avg_total  = sum(float(r.get("Total", 0)) for r in rows) / n_legs
+        corr_bonus = 0.5 if avg_total >= 230 else 0.0
+        slip_score = round(total_conf + corr_bonus, 2)
+        payout     = PAYOUTS.get(n_legs, 1)
+        avg_conf   = total_conf / n_legs
 
-        results.append({
-            "game":      f"{t1} vs {t2}",
-            "t1": t1, "t2": t2,
-            "spread":    spread,
-            "total":     total,
-            "alpha":     fmt_players(alpha),
-            "alpha_conf": round(alpha["conf_score"].sum(), 1),
-            "alpha_proj": round(alpha["Projection"].sum(), 1),
-            "alpha_dvp":  round(alpha["DVP"].mean(), 0),
-            "alt":       fmt_players(alt),
-            "alt_conf":  round(alt["conf_score"].sum(), 1),
-            "alt_proj":  round(alt["Projection"].sum(), 1),
-        })
-    return results
+        if avg_conf >= 8:
+            tier = "LOCK"
+        elif avg_conf >= 5:
+            tier = "LEAN"
+        else:
+            tier = "DART"
 
-
-def build_multi_game_p4s(df: pd.DataFrame, games: list) -> list:
-    game_keys  = [f"{t1}/{t2}" for t1, t2 in games]
-    df2        = df.copy()
-    df2["game"] = df2["Team"].map(
-        {t: f"{t}/{o}" for t, o in zip(df["Team"], df["Opp"])}
-    )
-
-    # Top 3 per game
-    top_per_game = []
-    for gk in game_keys:
-        gdf = df2[df2["game"] == gk].sort_values("conf_score", ascending=False).head(3)
-        for _, r in gdf.iterrows():
-            top_per_game.append(r)
-    pool_df = pd.DataFrame(top_per_game)
-
-    seen   = set()
-    combos = []
-
-    for gc in combinations(game_keys, 4):
-        for slot_combo in [(0,0,0,0),(0,0,0,1),(0,0,1,0),(0,1,0,0),(1,0,0,0)]:
-            selected = []
-            for i, g in enumerate(gc):
-                idx  = slot_combo[i] if i < len(slot_combo) else 0
-                pool = pool_df[pool_df["game"] == g].sort_values(
-                    "conf_score", ascending=False
-                )
-                if len(pool) > idx:
-                    selected.append(pool.iloc[idx])
-            if len(selected) != 4:
-                continue
-            sel_df = pd.DataFrame(selected)
-            key    = tuple(sorted(sel_df["Name"].tolist()))
-            if key in seen:
-                continue
-            seen.add(key)
-
-            players = []
-            for _, r in sel_df.iterrows():
-                bc = best_cat(r)
-                players.append({
-                    "name":     r["Name"],
-                    "team":     r["Team"],
-                    "game":     r["game"].replace("/", " vs "),
-                    "dvp":      int(r["DVP"]),
-                    "proj":     round(r["Projection"], 1),
-                    "val":      round(r["Pts/$1k"], 1),
-                    "best_cat": bc,
-                    "best_val": round(r[bc], 1),
-                })
-            combos.append({
-                "games_covered": [g.replace("/", " vs ") for g in gc],
-                "conf_score":    round(sel_df["conf_score"].sum(), 1),
-                "total_proj":    round(sel_df["Projection"].sum(), 1),
-                "avg_dvp":       round(sel_df["DVP"].mean(), 1),
-                "players":       players,
+        players = []
+        for r in rows:
+            bc = best_cat(r)
+            players.append({
+                "name":    str(r.get("Name", "")),
+                "team":    str(r.get("Team", "")),
+                "opp":     str(r.get("Opp", "")),
+                "dvp":     int(r.get("DVP", 0)),
+                "proj":    round(float(r.get("Projection", 0)), 1),
+                "cat":     bc,
+                "cat_val": round(float(r.get(bc, 0)), 1),
+                "conf":    round(float(r.get("conf_score", 0)), 2),
+                "mins":    round(float(r.get("MINS", 0)), 1),
+                "usg":     round(float(r.get("USG", 0)), 1),
+                "total":   round(float(r.get("Total", 0)), 1),
             })
 
-    combos.sort(key=lambda x: x["conf_score"], reverse=True)
-    return combos[:10]
-
-
-def build_category_leaders(df: pd.DataFrame, games: list) -> list:
-    cats = {
-        "PTS": "Points", "AST": "Assists", "REB": "Rebounds",
-        "PR": "Pts+Reb", "PA": "Pts+Ast", "RA": "Reb+Ast", "PRA": "Pts+Reb+Ast"
-    }
-    result = []
-    for t1, t2 in games:
-        mask = df["Team"].isin([t1, t2])
-        gdf  = df[mask].copy()
-        spread = gdf["Spread"].iloc[0] if "Spread" in gdf.columns else "N/A"
-        total  = gdf["Total"].iloc[0]  if "Total"  in gdf.columns else "N/A"
-        game_cats = []
-        for col, label in cats.items():
-            top = gdf.nlargest(6, col)[["Name", "Team", "DVP", col]].to_dict("records")
-            game_cats.append({
-                "category": label,
-                "col":      col,
-                "leaders":  [
-                    {"name": r["Name"], "team": r["Team"],
-                     "dvp": int(r["DVP"]), "val": round(r[col], 1)}
-                    for r in top
-                ],
-            })
-        result.append({
-            "game": f"{t1} vs {t2}",
-            "spread": spread, "total": total,
-            "categories": game_cats,
+        slips_by_legs[n_legs].append({
+            "legs":     n_legs,
+            "score":    slip_score,
+            "tier":     tier,
+            "payout":   payout,
+            "avg_dvp":  round(sum(float(r.get("DVP", 0)) for r in rows) / n_legs, 1),
+            "avg_proj": round(sum(float(r.get("Projection", 0)) for r in rows) / n_legs, 1),
+            "players":  players,
         })
-    return result
 
+    slips_by_legs[n_legs].sort(key=lambda x: x["score"], reverse=True)
+    slips_by_legs[n_legs] = slips_by_legs[n_legs][:15]
 
-# ── Main entry point ───────────────────────────────────────────────────────
+return slips_by_legs
+```
 
-def run_daily_scrape(output_path: str):
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+def build_category_leaders(df, games):
+cat_labels = {
+“PTS”: “Points”, “AST”: “Assists”, “REB”: “Rebounds”,
+“STL”: “Steals”, “BLK”: “Blocks”, “3PM”: “3-Pointers”,
+“PR”: “Pts+Reb”, “PA”: “Pts+Ast”, “RA”: “Reb+Ast”, “PRA”: “Pts+Reb+Ast”,
+}
+result = []
+for t1, t2 in games:
+gdf = df[df[“Team”].isin([t1, t2])].copy()
+if gdf.empty:
+continue
+game_cats = []
+for col, label in cat_labels.items():
+if col not in gdf.columns or gdf[col].sum() == 0:
+continue
+top = gdf.nlargest(5, col)
+game_cats.append({
+“category”: label,
+“leaders”: [
+{
+“name”: str(r[“Name”]),
+“team”: str(r[“Team”]),
+“dvp”:  int(r[“DVP”]),
+“val”:  round(float(r[col]), 1),
+“conf”: round(float(r[“conf_score”]), 1),
+}
+for _, r in top.iterrows()
+],
+})
+result.append({
+“game”:       t1 + “ vs “ + t2,
+“spread”:     str(gdf[“Spread”].iloc[0]),
+“total”:      str(gdf[“Total”].iloc[0]),
+“categories”: game_cats,
+})
+return result
 
-    raw_df = fetch_projections_csv()
-    df     = normalize_columns(raw_df)
-    df     = build_combo_stats(df)
-    df     = df.dropna(subset=["Name", "Team", "Opp"])
+def build_top_locks(df):
+top = df.nlargest(12, “conf_score”)
+locks = []
+for _, r in top.iterrows():
+bc = best_cat(r)
+locks.append({
+“name”:     str(r[“Name”]),
+“team”:     str(r[“Team”]),
+“opp”:      str(r.get(“Opp”, “”)),
+“dvp”:      int(r[“DVP”]),
+“proj”:     round(float(r[“Projection”]), 1),
+“val”:      round(float(r.get(“Value”, 0)), 1),
+“mins”:     round(float(r.get(“MINS”, 0)), 1),
+“usg”:      round(float(r.get(“USG”, 0)), 1),
+“pts”:      round(float(r.get(“PTS”, 0)), 1),
+“reb”:      round(float(r.get(“REB”, 0)), 1),
+“ast”:      round(float(r.get(“AST”, 0)), 1),
+“stl”:      round(float(r.get(“STL”, 0)), 1),
+“blk”:      round(float(r.get(“BLK”, 0)), 1),
+“threepm”:  round(float(r.get(“3PM”, 0)), 1),
+“pra”:      round(float(r.get(“PRA”, 0)), 1),
+“best_cat”: bc,
+“best_val”: round(float(r.get(bc, 0)), 1),
+“conf”:     round(float(r[“conf_score”]), 2),
+“total”:    round(float(r.get(“Total”, 0)), 1),
+“spread”:   str(r.get(“Spread”, “N/A”)),
+})
+return locks
 
-    # Save fallback copy
-    os.makedirs("data", exist_ok=True)
-    df.to_csv(FALLBACK_CSV, index=False)
+def build_value_plays(df):
+vdf = df[
+(df[“DVP”] >= 22) &
+(df[“Value”] >= 5.5) &
+(df[“Projection”] >= 25)
+].copy().sort_values([“DVP”, “Value”], ascending=False).head(10)
+result = []
+for _, r in vdf.iterrows():
+bc = best_cat(r)
+result.append({
+“name”:     str(r[“Name”]),
+“team”:     str(r[“Team”]),
+“opp”:      str(r.get(“Opp”, “”)),
+“dvp”:      int(r[“DVP”]),
+“proj”:     round(float(r[“Projection”]), 1),
+“val”:      round(float(r.get(“Value”, 0)), 1),
+“salary”:   int(r.get(“Salary”, 0)),
+“best_cat”: bc,
+“best_val”: round(float(r.get(bc, 0)), 1),
+“conf”:     round(float(r[“conf_score”]), 2),
+“total”:    round(float(r.get(“Total”, 0)), 1),
+})
+return result
 
-    games        = detect_games(df)
-    same_game    = build_same_game_p4s(df, games)
-    multi_game   = build_multi_game_p4s(df, games)
-    cat_leaders  = build_category_leaders(df, games)
+def run_daily_scrape(output_path):
+os.makedirs(os.path.dirname(output_path), exist_ok=True)
+os.makedirs(“data”, exist_ok=True)
 
-    # Top locks (appear in most multi-game P4s)
-    from collections import Counter
-    name_counts = Counter()
-    for combo in multi_game[:6]:
-        for p in combo["players"]:
-            name_counts[p["name"]] += 1
-    top_locks = [
-        {"name": n, "count": c, "pct": round(c / min(6, len(multi_game)) * 100)}
-        for n, c in name_counts.most_common(6)
-    ]
+```
+raw_df = fetch_projections_csv()
+df = normalize_columns(raw_df)
+df = build_combo_stats(df)
+df = df.dropna(subset=["Name", "Team", "Opp"])
+df.to_csv(FALLBACK_CSV, index=False)
 
-    report = {
-        "generated_at": datetime.now().strftime("%B %d, %Y at %I:%M %p ET"),
-        "slate_date":   datetime.now().strftime("%A, %B %d"),
-        "game_count":   len(games),
-        "same_game_p4": same_game,
-        "multi_game_p4": multi_game,
-        "category_leaders": cat_leaders,
-        "top_locks":    top_locks,
-    }
+games       = detect_games(df)
+same_game   = build_same_game_p4s(df, games)
+slips       = build_slips(df)
+cat_leaders = build_category_leaders(df, games)
+top_locks   = build_top_locks(df)
+value_plays = build_value_plays(df)
 
-    with open(output_path, "w") as f:
-        json.dump(report, f, indent=2)
+slips_out = {str(k): v for k, v in slips.items()}
 
-    logger.info(f"Report saved to {output_path}")
-    return report
+report = {
+    "generated_at":     datetime.now().strftime("%B %d, %Y at %I:%M %p ET"),
+    "slate_date":       datetime.now().strftime("%A, %B %d"),
+    "game_count":       len(games),
+    "same_game_p4":     same_game,
+    "slips":            slips_out,
+    "category_leaders": cat_leaders,
+    "top_locks":        top_locks,
+    "value_plays":      value_plays,
+}
+
+with open(output_path, "w") as f:
+    json.dump(report, f, indent=2)
+
+logger.info("Report saved - %d games", len(games))
+return report
+```
