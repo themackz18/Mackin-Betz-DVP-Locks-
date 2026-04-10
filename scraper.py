@@ -1,5 +1,5 @@
 # scraper.py - Mackin Betz DVP Locks
-
+sed -i 's/[“”]/"/g' scraper.py
 import os
 import json
 import logging
