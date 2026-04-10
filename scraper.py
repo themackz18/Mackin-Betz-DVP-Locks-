@@ -8,7 +8,7 @@ from datetime import datetime
 from itertools import combinations
 
 logger = logging.getLogger(**name**)
-FALLBACK_CSV = “data/fallback.csv”
+FALLBACK_CSV = FALLBACK_CSV = "data/fallback.csv"
 
 EDGE_LOCK  = 6.0
 EDGE_LEAN  = 3.0
