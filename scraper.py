@@ -341,5 +341,3 @@ with open(output_path, "w") as f:
     json.dump(report, f, indent=2)
 
 logger.info("Report saved - %d games", len(games))
-return report
-```
