@@ -1,5 +1,3 @@
-flask
-gunicorn
 pandas
-beautifulsoup4
-apscheduler
+fastapi
+uvicorn[standard]
