@@ -1,729 +1,994 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Power 4 NBA Fantasy — Daily Projections</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<title>Mackin Betz DVP Locks</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg:        #080b10;
-    --panel:     #0e1318;
-    --border:    #1a2030;
-    --gold:      #f5c842;
-    --gold2:     #e8a020;
-    --green:     #22d47a;
-    --red:       #f04060;
-    --blue:      #3a9bff;
-    --muted:     #4a5568;
-    --text:      #e2e8f0;
-    --text2:     #94a3b8;
-    --font-head: 'Bebas Neue', sans-serif;
-    --font-body: 'Instrument Sans', sans-serif;
-    --font-mono: 'DM Mono', monospace;
-  }
+/* ══════════════════════════════════════════
+   ROOT TOKENS
+══════════════════════════════════════════ */
+:root {
+  --black:    #05040a;
+  --deep:     #0c0a14;
+  --surface:  #12101e;
+  --card:     #1a1728;
+  --border:   #2a2444;
+  --purple:   #7c3aed;
+  --purple2:  #9d5cf6;
+  --gold:     #f5c518;
+  --gold2:    #ffd966;
+  --amber:    #f59e0b;
+  --fire:     #ff4d00;
+  --fire2:    #ff8c00;
+  --green:    #10b981;
+  --red:      #ef4444;
+  --text:     #e8e0f8;
+  --muted:    #6b6485;
+  --lock-glow: 0 0 20px rgba(245,197,24,0.4);
+  --purple-glow: 0 0 30px rgba(124,58,237,0.5);
+}
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+- { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font-body);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+body {
+font-family: ‘Barlow’, sans-serif;
+background: var(–black);
+color: var(–text);
+min-height: 100vh;
+overflow-x: hidden;
+}
 
-  /* Background grain */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
-    opacity: 0.4;
-  }
+/* ══════════════════════════════════════════
+BACKGROUND ATMOSPHERE
+══════════════════════════════════════════ */
+body::before {
+content: ‘’;
+position: fixed;
+inset: 0;
+background:
+radial-gradient(ellipse 80% 40% at 50% 0%, rgba(124,58,237,0.18) 0%, transparent 70%),
+radial-gradient(ellipse 60% 30% at 20% 100%, rgba(245,197,24,0.07) 0%, transparent 60%),
+radial-gradient(ellipse 40% 20% at 80% 80%, rgba(255,77,0,0.06) 0%, transparent 50%);
+pointer-events: none;
+z-index: 0;
+}
 
-  /* ── HEADER ── */
-  header {
-    position: relative;
-    padding: 0 24px;
-    border-bottom: 1px solid var(--border);
-    background: linear-gradient(180deg, #0d1520 0%, var(--bg) 100%);
-  }
-  .header-inner {
-    max-width: 1400px;
-    margin: 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 0;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-  .logo {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-  }
-  .logo-p4 {
-    font-family: var(--font-head);
-    font-size: 52px;
-    letter-spacing: 2px;
-    color: var(--gold);
-    line-height: 1;
-    text-shadow: 0 0 40px rgba(245,200,66,0.3);
-  }
-  .logo-sub {
-    font-family: var(--font-head);
-    font-size: 22px;
-    color: var(--text2);
-    letter-spacing: 3px;
-  }
-  .header-meta {
-    text-align: right;
-  }
-  .slate-date {
-    font-family: var(--font-head);
-    font-size: 28px;
-    color: var(--text);
-    letter-spacing: 2px;
-  }
-  .generated-at {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 4px;
-  }
-  .live-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(34,212,122,0.1);
-    border: 1px solid rgba(34,212,122,0.3);
-    color: var(--green);
-    font-family: var(--font-mono);
-    font-size: 10px;
-    padding: 3px 10px;
-    border-radius: 20px;
-    margin-top: 6px;
-    letter-spacing: 1px;
-  }
-  .live-dot {
-    width: 6px; height: 6px;
-    background: var(--green);
-    border-radius: 50%;
-    animation: pulse 1.8s infinite;
-  }
-  @keyframes pulse {
-    0%,100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(0.8); }
-  }
+/* grain overlay */
+body::after {
+content: ‘’;
+position: fixed;
+inset: 0;
+background-image: url(“data:image/svg+xml,%3Csvg viewBox=‘0 0 256 256’ xmlns=‘http://www.w3.org/2000/svg’%3E%3Cfilter id=‘noise’%3E%3CfeTurbulence type=‘fractalNoise’ baseFrequency=‘0.9’ numOctaves=‘4’ stitchTiles=‘stitch’/%3E%3C/filter%3E%3Crect width=‘100%25’ height=‘100%25’ filter=‘url(%23noise)’ opacity=‘0.04’/%3E%3C/svg%3E”);
+pointer-events: none;
+z-index: 0;
+opacity: 0.6;
+}
 
-  /* ── AD SLOTS ── */
-  .ad-slot {
-    background: var(--panel);
-    border: 1px dashed var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--muted);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 1px;
-  }
-  .ad-leaderboard { width: 100%; height: 90px; }
-  .ad-box { width: 300px; height: 250px; flex-shrink: 0; }
+/* ══════════════════════════════════════════
+HEADER & ANIMATED LOGO
+══════════════════════════════════════════ */
+header {
+position: relative;
+z-index: 10;
+text-align: center;
+padding: 28px 16px 20px;
+border-bottom: 1px solid var(–border);
+background: linear-gradient(180deg, rgba(12,10,20,0.95) 0%, transparent 100%);
+}
 
-  /* ── LAYOUT ── */
-  .main-wrap {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 0 24px 60px;
-  }
+.logo-wrap {
+position: relative;
+display: inline-block;
+margin-bottom: 6px;
+}
 
-  /* ── NAV TABS ── */
-  .tabs {
-    display: flex;
-    gap: 0;
-    border-bottom: 1px solid var(--border);
-    margin: 32px 0 0;
-    overflow-x: auto;
-  }
-  .tab-btn {
-    font-family: var(--font-head);
-    font-size: 16px;
-    letter-spacing: 2px;
-    color: var(--muted);
-    background: none;
-    border: none;
-    padding: 14px 28px;
-    cursor: pointer;
-    border-bottom: 3px solid transparent;
-    white-space: nowrap;
-    transition: all 0.2s;
-  }
-  .tab-btn:hover { color: var(--text); }
-  .tab-btn.active {
-    color: var(--gold);
-    border-bottom-color: var(--gold);
-  }
+/* Canvas flames sit behind text */
+#flameCanvas {
+position: absolute;
+left: 50%;
+transform: translateX(-50%);
+bottom: -10px;
+width: 340px;
+height: 120px;
+pointer-events: none;
+z-index: 1;
+}
 
-  /* ── SECTIONS ── */
-  .section { display: none; padding: 32px 0; }
-  .section.active { display: block; }
+.logo-text {
+position: relative;
+z-index: 2;
+font-family: ‘Cinzel Decorative’, serif;
+font-size: clamp(1.6rem, 5vw, 2.6rem);
+font-weight: 900;
+letter-spacing: 2px;
+line-height: 1.1;
+background: linear-gradient(135deg, #f5c518 0%, #ffd966 35%, #ffffff 50%, #9d5cf6 75%, #7c3aed 100%);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+background-clip: text;
+filter: drop-shadow(0 0 12px rgba(245,197,24,0.6)) drop-shadow(0 0 30px rgba(124,58,237,0.5));
+animation: logoShimmer 4s ease-in-out infinite;
+}
 
-  /* ── TOP LOCKS BAR ── */
-  .locks-bar {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 32px;
-    padding: 20px 24px;
-    background: linear-gradient(135deg, rgba(245,200,66,0.06) 0%, rgba(14,19,24,0) 100%);
-    border: 1px solid rgba(245,200,66,0.15);
-    border-radius: 12px;
-  }
-  .locks-label {
-    font-family: var(--font-head);
-    font-size: 14px;
-    letter-spacing: 2px;
-    color: var(--gold);
-    align-self: center;
-    white-space: nowrap;
-    margin-right: 8px;
-  }
-  .lock-chip {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 14px;
-    font-size: 13px;
-  }
-  .lock-chip .lock-name { font-weight: 600; }
-  .lock-chip .lock-pct {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--gold);
-    background: rgba(245,200,66,0.1);
-    padding: 2px 6px;
-    border-radius: 4px;
-  }
+@keyframes logoShimmer {
+0%, 100% { filter: drop-shadow(0 0 12px rgba(245,197,24,0.6)) drop-shadow(0 0 30px rgba(124,58,237,0.5)); }
+50%       { filter: drop-shadow(0 0 20px rgba(245,197,24,0.9)) drop-shadow(0 0 45px rgba(124,58,237,0.8)); }
+}
 
-  /* ── GAME GRID ── */
-  .games-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(640px, 1fr));
-    gap: 20px;
-  }
+.logo-sub {
+font-family: ‘Barlow Condensed’, sans-serif;
+font-size: 0.72rem;
+font-weight: 600;
+letter-spacing: 5px;
+text-transform: uppercase;
+color: var(–muted);
+margin-top: 4px;
+}
 
-  .game-card {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    overflow: hidden;
-    transition: border-color 0.2s;
-  }
-  .game-card:hover { border-color: #2a3448; }
+.updated {
+font-size: 0.72rem;
+color: var(–muted);
+margin-top: 8px;
+}
 
-  .game-card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    background: linear-gradient(90deg, #111820 0%, #0e1318 100%);
-    border-bottom: 1px solid var(--border);
-  }
-  .game-title {
-    font-family: var(--font-head);
-    font-size: 24px;
-    letter-spacing: 2px;
-    color: var(--text);
-  }
-  .game-badges {
-    display: flex;
-    gap: 8px;
-  }
-  .badge {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    padding: 3px 8px;
-    border-radius: 4px;
-    letter-spacing: 1px;
-  }
-  .badge-spread {
-    background: rgba(58,155,255,0.12);
-    border: 1px solid rgba(58,155,255,0.25);
-    color: var(--blue);
-  }
-  .badge-total {
-    background: rgba(245,200,66,0.08);
-    border: 1px solid rgba(245,200,66,0.2);
-    color: var(--gold);
-  }
+/* ══════════════════════════════════════════
+TABS
+══════════════════════════════════════════ */
+.tabs {
+position: relative;
+z-index: 10;
+display: flex;
+background: var(–deep);
+border-bottom: 1px solid var(–border);
+overflow-x: auto;
+scrollbar-width: none;
+padding: 0 8px;
+}
+.tabs::-webkit-scrollbar { display: none; }
 
-  .p4-label {
-    font-family: var(--font-head);
-    font-size: 12px;
-    letter-spacing: 2px;
-    color: var(--gold);
-    padding: 12px 20px 6px;
-  }
-  .p4-label.alt { color: var(--blue); }
+.tab {
+flex: 1;
+min-width: 70px;
+padding: 12px 6px 10px;
+text-align: center;
+cursor: pointer;
+font-family: ‘Barlow Condensed’, sans-serif;
+font-size: 0.75rem;
+font-weight: 700;
+letter-spacing: 0.5px;
+text-transform: uppercase;
+color: var(–muted);
+border-bottom: 2px solid transparent;
+transition: all 0.2s;
+white-space: nowrap;
+}
+.tab:hover { color: var(–text); }
+.tab.active {
+color: var(–gold);
+border-bottom-color: var(–gold);
+text-shadow: 0 0 10px rgba(245,197,24,0.5);
+}
 
-  .player-row {
-    display: grid;
-    grid-template-columns: 1fr auto auto auto auto;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 20px;
-    border-bottom: 1px solid rgba(255,255,255,0.03);
-    transition: background 0.15s;
-  }
-  .player-row:hover { background: rgba(255,255,255,0.02); }
-  .player-row:last-child { border-bottom: none; }
+/* ══════════════════════════════════════════
+PANES
+══════════════════════════════════════════ */
+.pane { display: none; padding: 14px 12px; position: relative; z-index: 5; }
+.pane.active { display: block; }
 
-  .player-name { font-weight: 600; font-size: 14px; }
-  .player-team {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--muted);
-    margin-top: 2px;
-  }
+/* ══════════════════════════════════════════
+SECTION TITLES
+══════════════════════════════════════════ */
+.sec-title {
+font-family: ‘Barlow Condensed’, sans-serif;
+font-size: 1rem;
+font-weight: 700;
+letter-spacing: 2px;
+text-transform: uppercase;
+color: var(–gold);
+margin-bottom: 12px;
+padding-bottom: 6px;
+border-bottom: 1px solid rgba(245,197,24,0.2);
+}
 
-  .dvp-pill {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    padding: 3px 9px;
-    border-radius: 20px;
-    white-space: nowrap;
-  }
-  .dvp-hot  { background: rgba(240,64,96,0.12);  border: 1px solid rgba(240,64,96,0.25);  color: var(--red);  }
-  .dvp-warm { background: rgba(245,200,66,0.10); border: 1px solid rgba(245,200,66,0.2);  color: var(--gold); }
-  .dvp-cool { background: rgba(58,155,255,0.10); border: 1px solid rgba(58,155,255,0.2);  color: var(--blue); }
+/* ══════════════════════════════════════════
+GAME ACCORDION CARDS
+══════════════════════════════════════════ */
+.game-card {
+background: var(–card);
+border: 1px solid var(–border);
+border-radius: 12px;
+margin-bottom: 10px;
+overflow: hidden;
+transition: border-color 0.2s;
+}
+.game-card:hover { border-color: rgba(124,58,237,0.5); }
+.game-card.open  { border-color: var(–purple); box-shadow: var(–purple-glow); }
 
-  .proj-val {
-    font-family: var(--font-mono);
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--green);
-    white-space: nowrap;
-  }
-  .best-cat {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--muted);
-    white-space: nowrap;
-  }
-  .val-tag {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    padding: 2px 7px;
-    border-radius: 4px;
-    white-space: nowrap;
-  }
-  .val-elite { background: rgba(34,212,122,0.12); border: 1px solid rgba(34,212,122,0.2); color: var(--green); }
-  .val-good  { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text2); }
+.game-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+padding: 13px 14px;
+cursor: pointer;
+user-select: none;
+}
+.game-title {
+font-family: ‘Barlow Condensed’, sans-serif;
+font-size: 1rem;
+font-weight: 700;
+letter-spacing: 0.5px;
+}
+.game-pills {
+display: flex;
+gap: 5px;
+margin-top: 4px;
+flex-wrap: wrap;
+}
+.pill {
+font-size: 0.65rem;
+padding: 2px 8px;
+border-radius: 20px;
+background: rgba(255,255,255,0.06);
+color: var(–muted);
+}
+.pill b { color: var(–text); }
+.proj-pill {
+background: rgba(124,58,237,0.2);
+color: var(–purple2);
+font-weight: 700;
+font-size: 0.72rem;
+padding: 3px 10px;
+border-radius: 20px;
+}
+.chevron {
+font-size: 0.7rem;
+color: var(–muted);
+transition: transform 0.25s;
+margin-left: 8px;
+}
+.game-card.open .chevron { transform: rotate(90deg); color: var(–gold); }
 
-  .game-card-footer {
-    display: flex;
-    gap: 20px;
-    padding: 10px 20px;
-    background: rgba(0,0,0,0.2);
-    border-top: 1px solid var(--border);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--muted);
-  }
-  .footer-stat span { color: var(--text2); margin-left: 4px; }
+.game-body { display: none; padding: 0 12px 14px; }
+.game-card.open .game-body { display: block; }
 
-  .divider { height: 1px; background: var(--border); margin: 0 20px; }
+/* Sub-headers */
+.sub-hdr {
+font-family: ‘Barlow Condensed’, sans-serif;
+font-size: 0.68rem;
+font-weight: 700;
+letter-spacing: 2px;
+text-transform: uppercase;
+padding: 8px 0 5px;
+}
+.sub-hdr.alpha { color: var(–gold); }
+.sub-hdr.alt   { color: var(–purple2); }
 
-  /* ── MULTI-GAME SECTION ── */
-  .mg-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(560px, 1fr));
-    gap: 20px;
-  }
-  .mg-card {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    overflow: hidden;
-    position: relative;
-  }
-  .mg-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--gold), var(--gold2));
-  }
-  .mg-header {
-    padding: 16px 20px 10px;
-    border-bottom: 1px solid var(--border);
-  }
-  .mg-rank {
-    font-family: var(--font-head);
-    font-size: 11px;
-    letter-spacing: 3px;
-    color: var(--gold);
-    margin-bottom: 4px;
-  }
-  .mg-games-covered {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 8px;
-  }
-  .mg-game-tag {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--border);
-    color: var(--text2);
-    padding: 2px 8px;
-    border-radius: 4px;
-  }
-  .mg-stats {
-    display: flex;
-    gap: 20px;
-    padding: 10px 20px;
-    background: rgba(0,0,0,0.2);
-    border-top: 1px solid var(--border);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--muted);
-  }
-  .mg-stats span { color: var(--gold); margin-left: 4px; }
+/* ══════════════════════════════════════════
+PLAYER ROWS
+══════════════════════════════════════════ */
+.player-row {
+display: flex;
+align-items: center;
+gap: 8px;
+padding: 9px 10px;
+border-radius: 8px;
+margin-bottom: 4px;
+background: rgba(255,255,255,0.025);
+border: 1px solid transparent;
+transition: border-color 0.15s;
+}
+.player-row:hover { border-color: var(–border); }
 
-  /* ── CATEGORY LEADERS ── */
-  .cat-game-block { margin-bottom: 40px; }
-  .cat-game-title {
-    font-family: var(--font-head);
-    font-size: 26px;
-    letter-spacing: 3px;
-    color: var(--text);
-    margin-bottom: 4px;
-  }
-  .cat-game-meta {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--muted);
-    margin-bottom: 16px;
-  }
-  .cat-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 14px;
-  }
-  .cat-card {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  .cat-card-head {
-    background: rgba(255,255,255,0.03);
-    padding: 8px 14px;
-    border-bottom: 1px solid var(--border);
-    font-family: var(--font-head);
-    font-size: 14px;
-    letter-spacing: 2px;
-    color: var(--gold);
-  }
-  .cat-player {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 14px;
-    border-bottom: 1px solid rgba(255,255,255,0.03);
-    font-size: 13px;
-  }
-  .cat-player:last-child { border-bottom: none; }
-  .cat-player-left { display: flex; align-items: center; gap: 8px; }
-  .cat-rank {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--muted);
-    width: 14px;
-  }
-  .cat-val {
-    font-family: var(--font-mono);
-    font-size: 13px;
-    color: var(--green);
-    font-weight: 500;
-  }
+.player-info { flex: 1; min-width: 0; }
+.player-name {
+font-family: ‘Barlow Condensed’, sans-serif;
+font-size: 0.95rem;
+font-weight: 700;
+white-space: nowrap;
+overflow: hidden;
+text-overflow: ellipsis;
+}
+.player-meta { font-size: 0.65rem; color: var(–muted); margin-top: 1px; }
 
-  /* ── NO DATA ── */
-  .no-data {
-    text-align: center;
-    padding: 80px 20px;
-    color: var(--muted);
-    font-family: var(--font-mono);
-  }
-  .no-data h2 {
-    font-family: var(--font-head);
-    font-size: 36px;
-    letter-spacing: 4px;
-    color: var(--text2);
-    margin-bottom: 12px;
-  }
+.stats-row {
+display: flex;
+gap: 8px;
+align-items: center;
+flex-shrink: 0;
+}
+.stat-box { text-align: center; min-width: 30px; }
+.stat-val { font-size: 0.82rem; font-weight: 700; }
+.stat-lbl { font-size: 0.58rem; color: var(–muted); text-transform: uppercase; }
 
-  /* ── LOADING SPINNER ── */
-  .spinner {
-    width: 40px; height: 40px;
-    border: 3px solid var(--border);
-    border-top-color: var(--gold);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin: 0 auto 16px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+.dvp-hi  { color: var(–green); }
+.dvp-mid { color: var(–gold); }
+.dvp-lo  { color: var(–red); }
 
-  /* ── RESPONSIVE ── */
-  @media (max-width: 700px) {
-    .logo-p4 { font-size: 36px; }
-    .games-grid { grid-template-columns: 1fr; }
-    .mg-grid { grid-template-columns: 1fr; }
-    .cat-grid { grid-template-columns: 1fr 1fr; }
-    .player-row { grid-template-columns: 1fr auto auto; }
-    .proj-val, .best-cat { display: none; }
-    .tab-btn { padding: 12px 16px; font-size: 13px; }
-  }
+.cat-tag {
+font-size: 0.62rem;
+font-weight: 700;
+padding: 2px 7px;
+border-radius: 4px;
+background: rgba(124,58,237,0.25);
+color: var(–purple2);
+white-space: nowrap;
+}
 
-  /* ── FOOTER ── */
-  footer {
-    border-top: 1px solid var(--border);
-    padding: 24px;
-    text-align: center;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--muted);
-  }
+/* ══════════════════════════════════════════
+SLIPS
+══════════════════════════════════════════ */
+.slip-leg-tabs {
+display: flex;
+gap: 6px;
+margin-bottom: 14px;
+overflow-x: auto;
+scrollbar-width: none;
+}
+.slip-leg-tabs::-webkit-scrollbar { display: none; }
+
+.leg-tab {
+flex-shrink: 0;
+padding: 7px 14px;
+border-radius: 8px;
+border: 1px solid var(–border);
+background: var(–card);
+color: var(–muted);
+cursor: pointer;
+font-family: ‘Barlow Condensed’, sans-serif;
+font-size: 0.78rem;
+font-weight: 700;
+letter-spacing: 0.5px;
+text-transform: uppercase;
+transition: all 0.2s;
+}
+.leg-tab.active {
+background: var(–purple);
+border-color: var(–purple);
+color: #fff;
+box-shadow: 0 0 14px rgba(124,58,237,0.5);
+}
+
+.slip-card {
+background: var(–card);
+border: 1px solid var(–border);
+border-radius: 12px;
+padding: 13px;
+margin-bottom: 10px;
+transition: border-color 0.2s;
+}
+.slip-card:hover { border-color: rgba(124,58,237,0.4); }
+
+.slip-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 10px;
+}
+.slip-rank {
+font-family: ‘Barlow Condensed’, sans-serif;
+font-weight: 700;
+font-size: 0.8rem;
+color: var(–muted);
+}
+
+.tier-badge {
+font-family: ‘Barlow Condensed’, sans-serif;
+font-size: 0.7rem;
+font-weight: 700;
+letter-spacing: 1px;
+padding: 3px 10px;
+border-radius: 20px;
+}
+.tier-LOCK { background: rgba(245,197,24,0.2); color: var(–gold); border: 1px solid rgba(245,197,24,0.4); }
+.tier-LEAN { background: rgba(16,185,129,0.15); color: var(–green); border: 1px solid rgba(16,185,129,0.3); }
+.tier-DART { background: rgba(124,58,237,0.15); color: var(–purple2); border: 1px solid rgba(124,58,237,0.3); }
+
+.slip-meta {
+display: flex;
+gap: 6px;
+margin-top: 8px;
+flex-wrap: wrap;
+}
+.slip-stat {
+font-size: 0.68rem;
+padding: 2px 8px;
+border-radius: 12px;
+background: rgba(255,255,255,0.05);
+color: var(–muted);
+}
+.slip-stat b { color: var(–text); }
+
+.payout-badge {
+font-family: ‘Barlow Condensed’, sans-serif;
+font-size: 0.72rem;
+font-weight: 700;
+padding: 3px 10px;
+border-radius: 20px;
+background: rgba(255,140,0,0.15);
+color: var(–fire2);
+border: 1px solid rgba(255,140,0,0.3);
+}
+
+/* ══════════════════════════════════════════
+CATEGORY LEADERS
+══════════════════════════════════════════ */
+.cat-game-block { margin-bottom: 20px; }
+.cat-game-title {
+font-family: ‘Barlow Condensed’, sans-serif;
+font-size: 0.9rem;
+font-weight: 700;
+color: var(–purple2);
+margin-bottom: 8px;
+display: flex;
+justify-content: space-between;
+align-items: center;
+}
+.cat-grid {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 8px;
+}
+.cat-box {
+background: var(–card);
+border: 1px solid var(–border);
+border-radius: 10px;
+padding: 10px;
+}
+.cat-box-title {
+font-family: ‘Barlow Condensed’, sans-serif;
+font-size: 0.65rem;
+font-weight: 700;
+letter-spacing: 1.5px;
+text-transform: uppercase;
+color: var(–gold);
+margin-bottom: 7px;
+}
+.cat-leader {
+display: flex;
+justify-content: space-between;
+align-items: center;
+padding: 3px 0;
+border-bottom: 1px solid rgba(255,255,255,0.04);
+font-size: 0.76rem;
+}
+.cat-leader:last-child { border-bottom: none; }
+.cat-leader-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cat-leader-val { color: var(–purple2); font-weight: 700; margin-left: 6px; }
+
+/* ══════════════════════════════════════════
+TOP LOCKS
+══════════════════════════════════════════ */
+.lock-card {
+background: var(–card);
+border: 1px solid var(–border);
+border-radius: 12px;
+padding: 13px 14px;
+margin-bottom: 8px;
+display: flex;
+align-items: center;
+gap: 12px;
+transition: all 0.2s;
+}
+.lock-card:hover { border-color: var(–gold); box-shadow: var(–lock-glow); }
+.lock-card.rank-1 { border-color: rgba(245,197,24,0.5); box-shadow: var(–lock-glow); }
+
+.lock-num {
+font-family: ‘Cinzel Decorative’, serif;
+font-size: 1.3rem;
+font-weight: 700;
+color: var(–gold);
+width: 28px;
+text-align: center;
+flex-shrink: 0;
+}
+.lock-info { flex: 1; min-width: 0; }
+.lock-name {
+font-family: ‘Barlow Condensed’, sans-serif;
+font-size: 1rem;
+font-weight: 700;
+}
+.lock-sub { font-size: 0.65rem; color: var(–muted); margin-top: 2px; }
+
+.lock-stats {
+display: flex;
+gap: 8px;
+flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════
+VALUE PLAYS
+══════════════════════════════════════════ */
+.value-card {
+background: var(–card);
+border: 1px solid var(–border);
+border-radius: 10px;
+padding: 12px 14px;
+margin-bottom: 8px;
+display: flex;
+justify-content: space-between;
+align-items: center;
+gap: 8px;
+}
+.value-tag {
+font-size: 0.65rem;
+font-weight: 700;
+padding: 2px 8px;
+border-radius: 20px;
+background: rgba(16,185,129,0.15);
+color: var(–green);
+border: 1px solid rgba(16,185,129,0.3);
+}
+
+/* ══════════════════════════════════════════
+FOOTER
+══════════════════════════════════════════ */
+.footer {
+text-align: center;
+padding: 20px 16px;
+font-size: 0.72rem;
+color: var(–muted);
+position: relative;
+z-index: 5;
+}
+.footer a { color: var(–purple2); text-decoration: none; }
+.footer a:hover { color: var(–gold); }
+.footer-divider {
+height: 1px;
+background: linear-gradient(90deg, transparent, var(–border), transparent);
+margin-bottom: 16px;
+}
+
+/* ══════════════════════════════════════════
+EMPTY STATE
+══════════════════════════════════════════ */
+.empty {
+text-align: center;
+padding: 32px 16px;
+color: var(–muted);
+font-size: 0.82rem;
+}
+.empty-icon { font-size: 2rem; margin-bottom: 8px; }
+
+/* ══════════════════════════════════════════
+ANIMATIONS
+══════════════════════════════════════════ */
+@keyframes fadeUp {
+from { opacity: 0; transform: translateY(12px); }
+to   { opacity: 1; transform: translateY(0); }
+}
+.pane.active > * {
+animation: fadeUp 0.3s ease both;
+}
+.pane.active > *:nth-child(2) { animation-delay: 0.05s; }
+.pane.active > *:nth-child(3) { animation-delay: 0.1s; }
+.pane.active > *:nth-child(4) { animation-delay: 0.15s; }
 </style>
+
 </head>
 <body>
 
+<!-- ══════ HEADER ══════ -->
+
 <header>
-  <div class="header-inner">
-    <div class="logo">
-      <div class="logo-p4">POWER 4</div>
-      <div class="logo-sub">NBA Fantasy</div>
-    </div>
-    <div class="header-meta">
-      {% if report %}
-        <div class="slate-date">{{ report.slate_date }}</div>
-        <div class="generated-at">Updated {{ report.generated_at }}</div>
-        <div class="live-badge"><span class="live-dot"></span> LIVE SLATE</div>
-      {% else %}
-        <div class="slate-date">No Data Yet</div>
-        <div class="generated-at">Check back at noon ET</div>
-      {% endif %}
-    </div>
+  <div class="logo-wrap">
+    <canvas id="flameCanvas"></canvas>
+    <div class="logo-text">Mackin Betz</div>
   </div>
-  <!-- LEADERBOARD AD SLOT -->
-  <div class="ad-slot ad-leaderboard">
-    <!-- Google AdSense: paste your ad code here -->
-    ADVERTISEMENT
-  </div>
+  <div class="logo-sub">DVP Locks · Props Intelligence</div>
+  <div class="updated">Last updated: {{ report.generated_at if report else 'Unknown' }} &nbsp;·&nbsp; {{ report.game_count if report else 0 }} games on slate</div>
 </header>
 
-<div class="main-wrap">
+<!-- ══════ TABS ══════ -->
 
-  {% if not report %}
-  <div class="no-data">
-    <div class="spinner"></div>
-    <h2>LOADING SLATE</h2>
-    <p>The daily scrape runs at noon ET.<br>Visit <a href="/refresh" style="color:var(--gold);">/refresh</a> to trigger manually.</p>
-  </div>
-
-  {% else %}
-
-  <!-- TOP LOCKS BAR -->
-  <div class="locks-bar" style="margin-top:28px;">
-    <div class="locks-label">🔒 TOP LOCKS</div>
-    {% for lock in report.top_locks %}
-    <div class="lock-chip">
-      <span class="lock-name">{{ lock.name }}</span>
-      <span class="lock-pct">{{ lock.pct }}%</span>
-    </div>
-    {% endfor %}
-  </div>
-
-  <!-- TABS -->
-  <div class="tabs">
-    <button class="tab-btn active" onclick="showTab('same-game')">SAME-GAME POWER 4</button>
-    <button class="tab-btn" onclick="showTab('multi-game')">MULTI-GAME POWER 4</button>
-    <button class="tab-btn" onclick="showTab('categories')">CATEGORY LEADERS</button>
-  </div>
-
-  <!-- ════ TAB 1: SAME-GAME P4 ════ -->
-  <div id="same-game" class="section active">
-    <div class="games-grid">
-      {% for game in report.same_game_p4 %}
-      <div class="game-card">
-        <div class="game-card-header">
-          <div class="game-title">{{ game.game }}</div>
-          <div class="game-badges">
-            <span class="badge badge-spread">{{ game.spread }}</span>
-            <span class="badge badge-total">O/U {{ game.total }}</span>
-          </div>
-        </div>
-
-        <!-- Alpha P4 -->
-        <div class="p4-label">⚡ ALPHA LINEUP</div>
-        {% for p in game.alpha %}
-        <div class="player-row">
-          <div>
-            <div class="player-name">{{ p.name }}</div>
-            <div class="player-team">{{ p.team }}</div>
-          </div>
-          <div class="dvp-pill {% if p.dvp >= 25 %}dvp-hot{% elif p.dvp >= 15 %}dvp-warm{% else %}dvp-cool{% endif %}">
-            DVP {{ p.dvp }}
-          </div>
-          <div class="proj-val">{{ p.proj }}</div>
-          <div class="best-cat">{{ p.best_cat }}: {{ p.best_val }}</div>
-          <div class="val-tag {% if p.val >= 5.5 %}val-elite{% else %}val-good{% endif %}">
-            {{ p.val }}x
-          </div>
-        </div>
-        {% endfor %}
-        <div class="game-card-footer">
-          <div class="footer-stat">COMBINED PROJ <span>{{ game.alpha_proj }}</span></div>
-          <div class="footer-stat">AVG DVP <span>{{ game.alpha_dvp | int }}</span></div>
-          <div class="footer-stat">CONF SCORE <span>{{ game.alpha_conf }}</span></div>
-        </div>
-
-        <div class="divider"></div>
-
-        <!-- Alt P4 -->
-        <div class="p4-label alt">◈ ALT LINEUP</div>
-        {% for p in game.alt %}
-        <div class="player-row">
-          <div>
-            <div class="player-name">{{ p.name }}</div>
-            <div class="player-team">{{ p.team }}</div>
-          </div>
-          <div class="dvp-pill {% if p.dvp >= 25 %}dvp-hot{% elif p.dvp >= 15 %}dvp-warm{% else %}dvp-cool{% endif %}">
-            DVP {{ p.dvp }}
-          </div>
-          <div class="proj-val">{{ p.proj }}</div>
-          <div class="best-cat">{{ p.best_cat }}: {{ p.best_val }}</div>
-          <div class="val-tag {% if p.val >= 5.5 %}val-elite{% else %}val-good{% endif %}">
-            {{ p.val }}x
-          </div>
-        </div>
-        {% endfor %}
-        <div class="game-card-footer">
-          <div class="footer-stat">COMBINED PROJ <span>{{ game.alt_proj }}</span></div>
-          <div class="footer-stat">CONF SCORE <span>{{ game.alt_conf }}</span></div>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-
-    <!-- BOX AD -->
-    <div style="display:flex;justify-content:center;margin-top:40px;">
-      <div class="ad-slot ad-box">ADVERTISEMENT</div>
-    </div>
-  </div>
-
-  <!-- ════ TAB 2: MULTI-GAME P4 ════ -->
-  <div id="multi-game" class="section">
-    <div class="mg-grid">
-      {% for combo in report.multi_game_p4 %}
-      <div class="mg-card">
-        <div class="mg-header">
-          <div class="mg-rank">POWER 4 #{{ loop.index }} — CONF SCORE: {{ combo.conf_score }}</div>
-          <div class="mg-games-covered">
-            {% for g in combo.games_covered %}
-            <span class="mg-game-tag">{{ g }}</span>
-            {% endfor %}
-          </div>
-        </div>
-        {% for p in combo.players %}
-        <div class="player-row">
-          <div>
-            <div class="player-name">{{ p.name }}</div>
-            <div class="player-team">{{ p.team }} · {{ p.game }}</div>
-          </div>
-          <div class="dvp-pill {% if p.dvp >= 25 %}dvp-hot{% elif p.dvp >= 15 %}dvp-warm{% else %}dvp-cool{% endif %}">
-            DVP {{ p.dvp }}
-          </div>
-          <div class="proj-val">{{ p.proj }}</div>
-          <div class="best-cat">{{ p.best_cat }}: {{ p.best_val }}</div>
-          <div class="val-tag {% if p.val >= 5.5 %}val-elite{% else %}val-good{% endif %}">
-            {{ p.val }}x
-          </div>
-        </div>
-        {% endfor %}
-        <div class="mg-stats">
-          <div>PROJ <span>{{ combo.total_proj }}</span></div>
-          <div>AVG DVP <span>{{ combo.avg_dvp }}</span></div>
-          <div>GAMES <span>{{ combo.games_covered | length }}</span></div>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-
-    <div style="display:flex;justify-content:center;margin-top:40px;">
-      <div class="ad-slot ad-box">ADVERTISEMENT</div>
-    </div>
-  </div>
-
-  <!-- ════ TAB 3: CATEGORY LEADERS ════ -->
-  <div id="categories" class="section">
-    {% for game in report.category_leaders %}
-    <div class="cat-game-block">
-      <div class="cat-game-title">{{ game.game }}</div>
-      <div class="cat-game-meta">Spread: {{ game.spread }} · O/U {{ game.total }}</div>
-      <div class="cat-grid">
-        {% for cat in game.categories %}
-        <div class="cat-card">
-          <div class="cat-card-head">{{ cat.category }}</div>
-          {% for leader in cat.leaders %}
-          <div class="cat-player">
-            <div class="cat-player-left">
-              <span class="cat-rank">#{{ loop.index }}</span>
-              <span>{{ leader.name }}</span>
-              <span class="player-team">{{ leader.team }}</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div class="dvp-pill {% if leader.dvp >= 25 %}dvp-hot{% elif leader.dvp >= 15 %}dvp-warm{% else %}dvp-cool{% endif %}" style="font-size:9px;padding:2px 6px;">
-                DVP {{ leader.dvp }}
-              </div>
-              <div class="cat-val">{{ leader.val }}</div>
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-
-  {% endif %}
+<div class="tabs">
+  <div class="tab active" onclick="showTab(0)">Today's<br>P4s</div>
+  <div class="tab" onclick="showTab(1)">Slips</div>
+  <div class="tab" onclick="showTab(2)">Category<br>Leaders</div>
+  <div class="tab" onclick="showTab(3)">Top<br>Locks</div>
+  <div class="tab" onclick="showTab(4)">Value<br>Plays</div>
 </div>
 
-<footer>
-  Power 4 NBA Fantasy · Data sourced from lineups.com · Updated daily at noon ET<br>
-  <span style="opacity:0.5;">Not financial advice. For entertainment purposes only.</span>
-</footer>
+<!-- ══════════════════════════════════════════
+     TAB 0 — TODAY'S P4s
+══════════════════════════════════════════ -->
+
+<div id="pane0" class="pane active">
+  <div class="sec-title">Same-Game Power4s</div>
+
+{% for game in report.same_game_p4 %}
+
+  <div class="game-card" onclick="toggleCard(this)">
+    <div class="game-header">
+      <div>
+        <div class="game-title">{{ game.game }}</div>
+        <div class="game-pills">
+          {% if game.spread %}
+          <span class="pill">Sprd <b>{{ game.spread }}</b></span>
+          {% endif %}
+          {% if game.total %}
+          <span class="pill">O/U <b>{{ game.total }}</b></span>
+          {% endif %}
+          <span class="pill">DVP avg <b>{{ game.alpha_dvp }}</b></span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="proj-pill">{{ game.alpha_proj }} Proj</span>
+        <span class="chevron">▶</span>
+      </div>
+    </div>
+
+```
+<div class="game-body">
+  <div class="sub-hdr alpha">⚡ Alpha — Conf {{ game.alpha_conf }}</div>
+  {% for p in game.alpha %}
+  <div class="player-row">
+    <div class="player-info">
+      <div class="player-name">{{ p.name }}</div>
+      <div class="player-meta">{{ p.team }} · {{ p.pos }} · {{ p.mins }}min · USG {{ p.usg }}%</div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-val {% if p.dvp >= 25 %}dvp-hi{% elif p.dvp >= 15 %}dvp-mid{% else %}dvp-lo{% endif %}">{{ p.dvp }}</div>
+        <div class="stat-lbl">DVP</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val">{{ p.proj }}</div>
+        <div class="stat-lbl">Proj</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" style="color:var(--gold2);">{{ p.val }}</div>
+        <div class="stat-lbl">Val</div>
+      </div>
+      <span class="cat-tag">{{ p.best_cat }} {{ p.best_val }}</span>
+    </div>
+  </div>
+  {% endfor %}
+
+  {% if game.alt %}
+  <div class="sub-hdr alt">🔄 Alt — Conf {{ game.alt_conf }}</div>
+  {% for p in game.alt %}
+  <div class="player-row">
+    <div class="player-info">
+      <div class="player-name">{{ p.name }}</div>
+      <div class="player-meta">{{ p.team }} · {{ p.pos }} · {{ p.mins }}min · USG {{ p.usg }}%</div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-val {% if p.dvp >= 25 %}dvp-hi{% elif p.dvp >= 15 %}dvp-mid{% else %}dvp-lo{% endif %}">{{ p.dvp }}</div>
+        <div class="stat-lbl">DVP</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val">{{ p.proj }}</div>
+        <div class="stat-lbl">Proj</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" style="color:var(--gold2);">{{ p.val }}</div>
+        <div class="stat-lbl">Val</div>
+      </div>
+      <span class="cat-tag">{{ p.best_cat }} {{ p.best_val }}</span>
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+</div>
+```
+
+  </div>
+  {% else %}
+  <div class="empty"><div class="empty-icon">📂</div>No game data — upload fallback.csv</div>
+  {% endfor %}
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 1 — SLIPS
+══════════════════════════════════════════ -->
+
+<div id="pane1" class="pane">
+  <div class="sec-title">Prop Slips</div>
+
+  <div class="slip-leg-tabs">
+    <div class="leg-tab active" onclick="showLegs(this,'legs2')">2-Leg · 3x</div>
+    <div class="leg-tab" onclick="showLegs(this,'legs3')">3-Leg · 5x</div>
+    <div class="leg-tab" onclick="showLegs(this,'legs4')">4-Leg · 10x</div>
+    <div class="leg-tab" onclick="showLegs(this,'legs5')">5-Leg · 20x</div>
+  </div>
+
+{% for leg_count in [‘2’,‘3’,‘4’,‘5’] %}
+
+  <div id="legs{{ leg_count }}" class="legs-pane" style="display:{% if leg_count == '2' %}block{% else %}none{% endif %};">
+    {% if report.slips and leg_count in report.slips and report.slips[leg_count] %}
+      {% for slip in report.slips[leg_count] %}
+      <div class="slip-card">
+        <div class="slip-header">
+          <div class="slip-rank">#{{ loop.index }}</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <span class="tier-badge tier-{{ slip.tier }}">
+              {% if slip.tier == 'LOCK' %}🔒{% elif slip.tier == 'LEAN' %}✅{% else %}🎯{% endif %}
+              {{ slip.tier }}
+            </span>
+            <span class="payout-badge">{{ slip.payout }}x Payout</span>
+          </div>
+        </div>
+
+```
+    {% for p in slip.players %}
+    <div class="player-row">
+      <div class="player-info">
+        <div class="player-name">{{ p.name }}</div>
+        <div class="player-meta">{{ p.team }} vs {{ p.opp }} · O/U {{ p.total }}</div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-val {% if p.dvp >= 25 %}dvp-hi{% elif p.dvp >= 15 %}dvp-mid{% else %}dvp-lo{% endif %}">{{ p.dvp }}</div>
+          <div class="stat-lbl">DVP</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val">{{ p.proj }}</div>
+          <div class="stat-lbl">Proj</div>
+        </div>
+        <span class="cat-tag">{{ p.cat }} {{ p.cat_val }}</span>
+      </div>
+    </div>
+    {% endfor %}
+
+    <div class="slip-meta">
+      <span class="slip-stat">Score: <b>{{ slip.score }}</b></span>
+      <span class="slip-stat">Avg DVP: <b>{{ slip.avg_dvp }}</b></span>
+      <span class="slip-stat">Avg Proj: <b>{{ slip.avg_proj }}</b></span>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="empty"><div class="empty-icon">🎰</div>No {{ leg_count }}-leg slips generated yet</div>
+{% endif %}
+```
+
+  </div>
+  {% endfor %}
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 2 — CATEGORY LEADERS
+══════════════════════════════════════════ -->
+
+<div id="pane2" class="pane">
+  <div class="sec-title">Category Leaders</div>
+
+{% for game in report.category_leaders %}
+
+  <div class="cat-game-block">
+    <div class="cat-game-title">
+      <span>{{ game.game }}</span>
+      <span style="font-size:0.65rem;color:var(--muted);font-family:'Barlow',sans-serif;font-weight:400;">
+        {% if game.spread %}Sprd {{ game.spread }} · {% endif %}O/U {{ game.total }}
+      </span>
+    </div>
+    <div class="cat-grid">
+      {% for cat in game.categories %}
+      <div class="cat-box">
+        <div class="cat-box-title">{{ cat.category }}</div>
+        {% for ldr in cat.leaders[:4] %}
+        <div class="cat-leader">
+          <span class="cat-leader-name">{{ ldr.name }}</span>
+          <span style="font-size:0.6rem;color:var(--muted);margin:0 4px;">{{ ldr.team }}</span>
+          <span class="cat-leader-val">{{ ldr.val }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <div class="empty"><div class="empty-icon">📊</div>No data loaded</div>
+  {% endfor %}
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 3 — TOP LOCKS
+══════════════════════════════════════════ -->
+
+<div id="pane3" class="pane">
+  <div class="sec-title">Top Locks</div>
+  <div style="font-size:0.72rem;color:var(--muted);margin-bottom:12px;">Ranked by DVP × Projection × Value confidence score</div>
+
+{% for lock in report.top_locks %}
+
+  <div class="lock-card {% if loop.index == 1 %}rank-1{% endif %}">
+    <div class="lock-num">{{ loop.index }}</div>
+    <div class="lock-info">
+      <div class="lock-name">{{ lock.name }}</div>
+      <div class="lock-sub">
+        {{ lock.team }} vs {{ lock.opp }} ·
+        DVP <span class="{% if lock.dvp >= 25 %}dvp-hi{% elif lock.dvp >= 15 %}dvp-mid{% else %}dvp-lo{% endif %}">{{ lock.dvp }}</span> ·
+        O/U {{ lock.total }} ·
+        USG {{ lock.usg }}%
+      </div>
+      <!-- Mini stat bar -->
+      <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap;">
+        {% if lock.pts > 0 %}<span class="pill">PTS <b>{{ lock.pts }}</b></span>{% endif %}
+        {% if lock.reb > 0 %}<span class="pill">REB <b>{{ lock.reb }}</b></span>{% endif %}
+        {% if lock.ast > 0 %}<span class="pill">AST <b>{{ lock.ast }}</b></span>{% endif %}
+        {% if lock.stl > 0 %}<span class="pill">STL <b>{{ lock.stl }}</b></span>{% endif %}
+        {% if lock.blk > 0 %}<span class="pill">BLK <b>{{ lock.blk }}</b></span>{% endif %}
+        {% if lock.threepm > 0 %}<span class="pill">3PM <b>{{ lock.threepm }}</b></span>{% endif %}
+        <span class="pill">PRA <b>{{ lock.pra }}</b></span>
+      </div>
+    </div>
+    <div style="text-align:right;flex-shrink:0;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;color:var(--gold);">{{ lock.proj }}</div>
+      <div style="font-size:0.6rem;color:var(--muted);">Proj</div>
+      <div style="font-size:0.7rem;color:var(--green);font-weight:600;margin-top:3px;">{{ lock.conf }} conf</div>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty"><div class="empty-icon">🔒</div>No locks generated</div>
+  {% endfor %}
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 4 — VALUE PLAYS
+══════════════════════════════════════════ -->
+
+<div id="pane4" class="pane">
+  <div class="sec-title">Value Plays</div>
+  <div style="font-size:0.72rem;color:var(--muted);margin-bottom:12px;">High DVP (≥22) + High Value (≥5.5x) + Strong Projection — underpriced edges</div>
+
+{% for v in report.value_plays %}
+
+  <div class="value-card">
+    <div style="flex:1;min-width:0;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;font-weight:700;">{{ v.name }}</div>
+      <div style="font-size:0.65rem;color:var(--muted);margin-top:2px;">{{ v.team }} vs {{ v.opp }} · O/U {{ v.total }}</div>
+      <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap;">
+        <span class="pill">DVP <b class="dvp-hi">{{ v.dvp }}</b></span>
+        <span class="pill">Proj <b>{{ v.proj }}</b></span>
+        <span class="pill">Val <b>{{ v.val }}x</b></span>
+      </div>
+    </div>
+    <div style="text-align:right;flex-shrink:0;">
+      <span class="cat-tag" style="display:block;margin-bottom:4px;">{{ v.best_cat }} {{ v.best_val }}</span>
+      <span class="value-tag">VALUE</span>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty"><div class="empty-icon">💎</div>No value plays — tighten DVP/Value thresholds in scraper.py if slate is weak</div>
+  {% endfor %}
+</div>
+
+<!-- ══════ FOOTER ══════ -->
+
+<div class="footer">
+  <div class="footer-divider"></div>
+  <a href="/api/report">View Full JSON</a> &nbsp;·&nbsp;
+  <a href="/refresh">Manual Refresh</a>
+  <div style="margin-top:8px;">Mackin Betz DVP Locks · For entertainment purposes</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════ -->
 
 <script>
-function showTab(id) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  event.target.classList.add('active');
+/* ── Tab switching ── */
+function showTab(n) {
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === n));
+  document.querySelectorAll('.pane').forEach((p, i) => {
+    p.classList.toggle('active', i === n);
+    if (i === n) { p.style.display = 'block'; }
+    else { p.style.display = 'none'; }
+  });
+  // Make sure first pane is always shown without display:none collision
+  document.querySelectorAll('.pane')[n].style.display = 'block';
 }
+
+/* ── Accordion ── */
+function toggleCard(card) {
+  const isOpen = card.classList.contains('open');
+  // Close all others
+  document.querySelectorAll('.game-card.open').forEach(c => c.classList.remove('open'));
+  if (!isOpen) card.classList.add('open');
+}
+
+/* ── Slip leg tabs ── */
+function showLegs(el, targetId) {
+  document.querySelectorAll('.leg-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.legs-pane').forEach(p => p.style.display = 'none');
+  const t = document.getElementById(targetId);
+  if (t) t.style.display = 'block';
+}
+
+/* ══════════════════════════════════════════
+   ANIMATED FIRE + SMOKE CANVAS
+══════════════════════════════════════════ */
+(function() {
+  const canvas = document.getElementById('flameCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width  = 340;
+  canvas.height = 120;
+
+  const W = canvas.width;
+  const H = canvas.height;
+
+  const particles = [];
+
+  function rand(min, max) { return Math.random() * (max - min) + min; }
+
+  class Particle {
+    constructor() { this.reset(); }
+    reset() {
+      this.x     = rand(W * 0.2, W * 0.8);
+      this.y     = H;
+      this.vx    = rand(-0.6, 0.6);
+      this.vy    = rand(-2.2, -0.8);
+      this.life  = 0;
+      this.maxL  = rand(60, 120);
+      this.r     = rand(4, 14);
+      this.type  = Math.random() < 0.65 ? 'fire' : 'smoke';
+      if (this.type === 'smoke') {
+        this.r   = rand(8, 22);
+        this.vy  = rand(-1.0, -0.4);
+        this.vx  = rand(-0.8, 0.8);
+        this.maxL = rand(80, 160);
+      }
+    }
+    update() {
+      this.life++;
+      this.x  += this.vx;
+      this.y  += this.vy;
+      this.vx += rand(-0.05, 0.05);
+      if (this.type === 'smoke') this.r += 0.15;
+      if (this.life >= this.maxL) this.reset();
+    }
+    draw() {
+      const prog = this.life / this.maxL;
+      let alpha, grad;
+
+      if (this.type === 'fire') {
+        alpha = prog < 0.3 ? prog / 0.3 : 1 - (prog - 0.3) / 0.7;
+        alpha = Math.max(0, alpha * 0.9);
+        grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.r);
+        // Gold core → orange → red rim
+        grad.addColorStop(0,   `rgba(255,220,80,${alpha})`);
+        grad.addColorStop(0.3, `rgba(255,140,0,${alpha * 0.85})`);
+        grad.addColorStop(0.7, `rgba(180,0,100,${alpha * 0.5})`);
+        grad.addColorStop(1,   `rgba(80,0,80,0)`);
+      } else {
+        alpha = prog < 0.2 ? 0 : prog < 0.5 ? (prog - 0.2) / 0.3 * 0.18 : (1 - prog) * 0.18;
+        alpha = Math.max(0, alpha);
+        grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.r);
+        grad.addColorStop(0,   `rgba(100,80,160,${alpha})`);
+        grad.addColorStop(0.5, `rgba(60,40,100,${alpha * 0.6})`);
+        grad.addColorStop(1,   `rgba(20,10,40,0)`);
+      }
+
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+  }
+
+  // Spawn particles
+  for (let i = 0; i < 55; i++) {
+    const p = new Particle();
+    p.life = Math.floor(rand(0, p.maxL)); // stagger start
+    particles.push(p);
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, W, H);
+    // Draw smoke first (behind), then fire
+    particles.filter(p => p.type === 'smoke').forEach(p => { p.update(); p.draw(); });
+    particles.filter(p => p.type === 'fire').forEach(p => { p.update(); p.draw(); });
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
 </script>
+
 </body>
 </html>
