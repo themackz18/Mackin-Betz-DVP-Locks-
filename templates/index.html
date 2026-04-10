@@ -1,61 +1,579 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mackin Betz DVP Locks</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 20px; }
-        h1 { color: #60a5fa; text-align: center; font-size: 1.8rem; }
-        .tabs { display: flex; background: #1e2937; border-radius: 12px; padding: 6px; margin-bottom: 20px; }
-        .tab { flex: 1; padding: 12px; text-align: center; border-radius: 8px; cursor: pointer; }
-        .tab.active { background: #60a5fa; color: #0f172a; font-weight: bold; }
-        .section { background: #1e2937; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-        .player { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #334155; }
-        .player:last-child { border-bottom: none; }
-        .highlight { color: #34d399; font-weight: bold; }
-        .ev-positive { color: #34d399; }
-        .ev-negative { color: #f87171; }
-    </style>
+        :root {
+            --bg:       #080d16;
+            --surface:  #101827;
+            --card:     #152035;
+            --border:   #1e3050;
+            --accent:   #38bdf8;
+            --green:    #34d399;
+            --red:      #f87171;
+            --gold:     #fbbf24;
+            --muted:    #64748b;
+            --text:     #e2e8f0;
+        }
+
+```
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+        font-family: 'Inter', sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        padding: 0 0 60px;
+    }
+
+    /* ── Header ── */
+    header {
+        background: linear-gradient(180deg, #0d1f38 0%, var(--bg) 100%);
+        border-bottom: 1px solid var(--border);
+        padding: 20px 16px 16px;
+        text-align: center;
+    }
+    header h1 {
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--accent);
+        letter-spacing: 1px;
+    }
+    .subtitle {
+        font-size: 0.78rem;
+        color: var(--muted);
+        margin-top: 4px;
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+        display: flex;
+        gap: 4px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        padding: 8px 12px 0;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab {
+        flex: 1;
+        min-width: 80px;
+        padding: 10px 8px;
+        text-align: center;
+        border-radius: 8px 8px 0 0;
+        cursor: pointer;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--muted);
+        border: 1px solid transparent;
+        border-bottom: none;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .tab.active {
+        background: var(--card);
+        color: var(--accent);
+        border-color: var(--border);
+    }
+    .tab:not(.active):hover { color: var(--text); }
+
+    /* ── Content panes ── */
+    .pane { display: none; padding: 16px; }
+    .pane.active { display: block; }
+
+    /* ── Section headers ── */
+    .section-title {
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--accent);
+        margin-bottom: 12px;
+        letter-spacing: 0.5px;
+    }
+
+    /* ── Accordion (game cards) ── */
+    .game-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        margin-bottom: 10px;
+        overflow: hidden;
+    }
+    .game-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        cursor: pointer;
+        user-select: none;
+    }
+    .game-header:hover { background: rgba(56,189,248,0.05); }
+    .game-title {
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+    .game-meta {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        font-size: 0.78rem;
+        color: var(--muted);
+    }
+    .proj-badge {
+        background: rgba(56,189,248,0.15);
+        color: var(--accent);
+        border-radius: 20px;
+        padding: 2px 10px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .chevron {
+        color: var(--muted);
+        font-size: 0.8rem;
+        transition: transform 0.2s;
+    }
+    .game-card.open .chevron { transform: rotate(90deg); }
+
+    .game-body { display: none; padding: 0 12px 12px; }
+    .game-card.open .game-body { display: block; }
+
+    /* ── Sub-accordion (Alpha / Alt) ── */
+    .sub-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 10px 0 6px;
+    }
+    .sub-label.alpha-label { color: var(--green); }
+    .sub-label.alt-label   { color: var(--gold); }
+
+    /* ── Player rows ── */
+    .player-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 10px;
+        border-radius: 7px;
+        margin-bottom: 4px;
+        background: rgba(255,255,255,0.03);
+        font-size: 0.83rem;
+    }
+    .player-row:last-child { margin-bottom: 0; }
+    .player-name { font-weight: 600; }
+    .player-team { font-size: 0.7rem; color: var(--muted); margin-top: 1px; }
+    .player-stats {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-shrink: 0;
+    }
+    .stat { text-align: center; }
+    .stat-val { font-size: 0.85rem; font-weight: 600; }
+    .stat-key { font-size: 0.62rem; color: var(--muted); text-transform: uppercase; }
+    .dvp-high  { color: var(--green); }
+    .dvp-mid   { color: var(--gold); }
+    .dvp-low   { color: var(--red); }
+    .cat-badge {
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: rgba(56,189,248,0.15);
+        color: var(--accent);
+    }
+
+    /* ── Combo totals strip ── */
+    .combo-strip {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+    }
+    .strip-badge {
+        font-size: 0.72rem;
+        padding: 3px 10px;
+        border-radius: 20px;
+        background: rgba(255,255,255,0.06);
+        color: var(--muted);
+    }
+    .strip-badge span { color: var(--text); font-weight: 600; }
+
+    /* ── Multi-game section ── */
+    .multi-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px;
+        margin-bottom: 10px;
+    }
+    .multi-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 10px;
+    }
+    .multi-rank {
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--gold);
+    }
+    .games-covered {
+        font-size: 0.68rem;
+        color: var(--muted);
+        margin-top: 2px;
+    }
+
+    /* ── Category leaders ── */
+    .cat-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    .cat-box {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px;
+    }
+    .cat-box-title {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--accent);
+        margin-bottom: 8px;
+    }
+    .cat-player {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.78rem;
+        padding: 3px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .cat-player:last-child { border-bottom: none; }
+
+    /* ── Top Locks ── */
+    .lock-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        margin-bottom: 8px;
+    }
+    .lock-rank {
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--gold);
+        width: 24px;
+        text-align: center;
+    }
+    .lock-name { font-weight: 600; flex: 1; }
+    .lock-bar-wrap { width: 80px; background: rgba(255,255,255,0.08); border-radius: 4px; height: 6px; }
+    .lock-bar { height: 6px; border-radius: 4px; background: var(--green); }
+    .lock-pct { font-size: 0.78rem; color: var(--green); font-weight: 600; min-width: 36px; text-align: right; }
+
+    /* ── Footer links ── */
+    .footer {
+        text-align: center;
+        margin-top: 24px;
+        font-size: 0.78rem;
+    }
+    .footer a { color: var(--accent); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+
+    /* ── Spread/total pill ── */
+    .game-line {
+        display: flex;
+        gap: 6px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+    }
+    .line-pill {
+        font-size: 0.68rem;
+        padding: 2px 8px;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.06);
+        color: var(--muted);
+    }
+    .line-pill b { color: var(--text); }
+
+    /* ── H2H ── */
+    .h2h-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        margin-bottom: 12px;
+        overflow: hidden;
+    }
+    .h2h-game-header {
+        background: rgba(56,189,248,0.07);
+        padding: 10px 14px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        border-bottom: 1px solid var(--border);
+    }
+    .h2h-row {
+        display: flex;
+        gap: 8px;
+        padding: 10px 14px;
+        align-items: center;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+        font-size: 0.82rem;
+    }
+    .h2h-row:last-child { border-bottom: none; }
+    .h2h-player { flex: 1; font-weight: 600; }
+    .h2h-vs { color: var(--muted); font-size: 0.7rem; }
+    .h2h-edge { color: var(--green); font-weight: 700; font-size: 0.85rem; min-width: 40px; text-align: right; }
+</style>
+```
+
 </head>
 <body>
+
+<header>
     <h1>🔥 Mackin Betz DVP Locks</h1>
-    <div style="text-align:center; color:#94a3b8; margin-bottom:20px;">
-        Last updated: {{ report.generated_at if report else 'Unknown' }}
-    </div>
+    <div class="subtitle">Last updated: {{ report.generated_at if report else 'Unknown' }}</div>
+</header>
 
-    <div class="tabs">
-        <div class="tab active" onclick="showTab(0)">Today's P4s</div>
-        <div class="tab" onclick="showTab(1)">Category Leaders</div>
-        <div class="tab" onclick="showTab(2)">H2H Edges</div>
-        <div class="tab" onclick="showTab(3)">Top Locks</div>
-    </div>
+<div class="tabs">
+    <div class="tab active" onclick="showTab(0)">Today's<br>P4s</div>
+    <div class="tab" onclick="showTab(1)">Category<br>Leaders</div>
+    <div class="tab" onclick="showTab(2)">H2H<br>Edges</div>
+    <div class="tab" onclick="showTab(3)">Top<br>Locks</div>
+</div>
 
-    <div id="tab0" class="section">
-        <!-- Same-game and multi-game P4s will go here via JS -->
-        <h2>Same-Game Power4s</h2>
-        {% for game in report.same_game_p4 %}
-            <details style="margin-bottom:15px;">
-                <summary>{{ game.game }} (Proj: {{ game.alpha_proj }})</summary>
-                <!-- players rendered here -->
-            </details>
+<!-- ══════════ TAB 0: Today's P4s ══════════ -->
+
+<div id="pane0" class="pane active">
+
+```
+<div class="section-title">Same-Game Power4s</div>
+
+{% for game in report.same_game_p4 %}
+<div class="game-card" onclick="toggleCard(this)">
+    <div class="game-header">
+        <div>
+            <div class="game-title">{{ game.game }}</div>
+            <div class="game-meta" style="margin-top:3px;">
+                {% if game.spread != 'N/A' %}
+                <span>Sprd: <b>{{ game.spread }}</b></span>
+                {% endif %}
+                {% if game.total != 'N/A' %}
+                <span>O/U: <b>{{ game.total }}</b></span>
+                {% endif %}
+            </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <span class="proj-badge">Proj: {{ game.alpha_proj }}</span>
+            <span class="chevron">▶</span>
+        </div>
+    </div>
+    <div class="game-body">
+        <div class="sub-label alpha-label">⚡ Alpha Lineup (Conf: {{ game.alpha_conf }})</div>
+        {% for p in game.alpha %}
+        <div class="player-row">
+            <div>
+                <div class="player-name">{{ p.name }}</div>
+                <div class="player-team">{{ p.team }}</div>
+            </div>
+            <div class="player-stats">
+                <div class="stat">
+                    <div class="stat-val {% if p.dvp >= 20 %}dvp-high{% elif p.dvp >= 10 %}dvp-mid{% else %}dvp-low{% endif %}">{{ p.dvp }}</div>
+                    <div class="stat-key">DVP</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-val">{{ p.proj }}</div>
+                    <div class="stat-key">Proj</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-val {% if p.ev > 0 %}dvp-high{% else %}dvp-low{% endif %}">{{ p.ev }}</div>
+                    <div class="stat-key">+EV</div>
+                </div>
+                <span class="cat-badge">{{ p.best_cat }} {{ p.best_val }}</span>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if game.alt %}
+        <div class="sub-label alt-label">🔄 Alt Lineup (Conf: {{ game.alt_conf }})</div>
+        {% for p in game.alt %}
+        <div class="player-row">
+            <div>
+                <div class="player-name">{{ p.name }}</div>
+                <div class="player-team">{{ p.team }}</div>
+            </div>
+            <div class="player-stats">
+                <div class="stat">
+                    <div class="stat-val {% if p.dvp >= 20 %}dvp-high{% elif p.dvp >= 10 %}dvp-mid{% else %}dvp-low{% endif %}">{{ p.dvp }}</div>
+                    <div class="stat-key">DVP</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-val">{{ p.proj }}</div>
+                    <div class="stat-key">Proj</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-val {% if p.ev > 0 %}dvp-high{% else %}dvp-low{% endif %}">{{ p.ev }}</div>
+                    <div class="stat-key">+EV</div>
+                </div>
+                <span class="cat-badge">{{ p.best_cat }} {{ p.best_val }}</span>
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+
+<!-- Multi-game section -->
+{% if report.multi_game_p4 %}
+<div class="section-title" style="margin-top:24px;">Multi-Game Power4s</div>
+{% for combo in report.multi_game_p4 %}
+<div class="multi-card">
+    <div class="multi-header">
+        <div>
+            <div class="multi-rank">#{{ loop.index }} Combo</div>
+            <div class="games-covered">{{ combo.games_covered | join(' · ') }}</div>
+        </div>
+        <div style="text-align:right;">
+            <div style="font-size:0.78rem;color:var(--muted);">Conf</div>
+            <div style="font-weight:700;color:var(--green);">{{ combo.conf_score }}</div>
+        </div>
+    </div>
+    {% for p in combo.players %}
+    <div class="player-row">
+        <div>
+            <div class="player-name">{{ p.name }}</div>
+            <div class="player-team">{{ p.team }} · {{ p.game }}</div>
+        </div>
+        <div class="player-stats">
+            <div class="stat">
+                <div class="stat-val {% if p.dvp >= 20 %}dvp-high{% elif p.dvp >= 10 %}dvp-mid{% else %}dvp-low{% endif %}">{{ p.dvp }}</div>
+                <div class="stat-key">DVP</div>
+            </div>
+            <div class="stat">
+                <div class="stat-val">{{ p.proj }}</div>
+                <div class="stat-key">Proj</div>
+            </div>
+            <span class="cat-badge">{{ p.best_cat }} {{ p.best_val }}</span>
+        </div>
+    </div>
+    {% endfor %}
+    <div class="combo-strip">
+        <div class="strip-badge">Total Proj: <span>{{ combo.total_proj }}</span></div>
+        <div class="strip-badge">Avg DVP: <span>{{ combo.avg_dvp }}</span></div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+```
+
+</div>
+
+<!-- ══════════ TAB 1: Category Leaders ══════════ -->
+
+<div id="pane1" class="pane">
+    {% for game in report.category_leaders %}
+    <div style="margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div class="section-title" style="margin-bottom:0;">{{ game.game }}</div>
+            <div style="font-size:0.72rem;color:var(--muted);">
+                {% if game.spread != 'N/A' %}Sprd: {{ game.spread }} · {% endif %}
+                {% if game.total != 'N/A' %}O/U: {{ game.total }}{% endif %}
+            </div>
+        </div>
+        <div class="cat-grid">
+            {% for cat in game.categories %}
+            <div class="cat-box">
+                <div class="cat-box-title">{{ cat.category }}</div>
+                {% for ldr in cat.leaders[:4] %}
+                <div class="cat-player">
+                    <span>{{ ldr.name }}</span>
+                    <span style="color:var(--accent);font-weight:600;">{{ ldr.val }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ══════════ TAB 2: H2H Edges ══════════ -->
+
+<div id="pane2" class="pane">
+    <div class="section-title">Head-to-Head DVP Edges</div>
+    <div style="font-size:0.78rem;color:var(--muted);margin-bottom:14px;">
+        Top 2 players per team ranked by DVP advantage over their opponent's defense.
+    </div>
+    {% for game in report.same_game_p4 %}
+    <div class="h2h-card">
+        <div class="h2h-game-header">
+            {{ game.game }}
+            {% if game.spread != 'N/A' %}<span style="font-size:0.72rem;color:var(--muted);margin-left:8px;">Sprd: {{ game.spread }} · O/U: {{ game.total }}</span>{% endif %}
+        </div>
+        {% for p in game.alpha %}
+        <div class="h2h-row">
+            <div class="h2h-player">{{ p.name }}</div>
+            <div style="font-size:0.72rem;color:var(--muted);">{{ p.team }}</div>
+            <div class="h2h-vs">DVP</div>
+            <div class="h2h-edge {% if p.dvp < 15 %}dvp-low{% endif %}">{{ p.dvp }}</div>
+            <span class="cat-badge">{{ p.best_cat }}</span>
+        </div>
         {% endfor %}
     </div>
+    {% endfor %}
+</div>
 
-    <!-- The other tabs are populated by simple JS. For brevity, the full interactive version is below. -->
+<!-- ══════════ TAB 3: Top Locks ══════════ -->
 
-    <script>
-        function showTab(n) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab')[n].classList.add('active');
-            // In a real app we'd switch content, but for now this is the structure
-            alert("Tab " + n + " clicked — full interactivity added in next version if needed");
-        }
-    </script>
-
-    <div style="text-align:center; margin-top:30px;">
-        <a href="/api/report" style="color:#60a5fa;">View Full JSON</a> • 
-        <a href="/refresh" style="color:#60a5fa;">Manual Refresh</a>
+<div id="pane3" class="pane">
+    <div class="section-title">Top Locks</div>
+    <div style="font-size:0.78rem;color:var(--muted);margin-bottom:14px;">
+        Players appearing most frequently across the top multi-game combos.
     </div>
+    {% for lock in report.top_locks %}
+    <div class="lock-row">
+        <div class="lock-rank">{{ loop.index }}</div>
+        <div class="lock-name">{{ lock.name }}</div>
+        <div class="lock-bar-wrap">
+            <div class="lock-bar" style="width:{{ lock.pct }}%;"></div>
+        </div>
+        <div class="lock-pct">{{ lock.pct }}%</div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ══════════ Footer ══════════ -->
+
+<div class="footer">
+    <a href="/api/report">View Full JSON</a> &nbsp;·&nbsp;
+    <a href="/refresh">Manual Refresh</a>
+</div>
+
+<script>
+    function showTab(n) {
+        document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === n));
+        document.querySelectorAll('.pane').forEach((p, i) => p.classList.toggle('active', i === n));
+    }
+
+    function toggleCard(card) {
+        card.classList.toggle('open');
+    }
+</script>
+
 </body>
 </html>
