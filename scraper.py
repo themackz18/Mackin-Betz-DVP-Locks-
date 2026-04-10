@@ -1,5 +1,6 @@
 # scraper.py - Mackin Betz DVP Locks
 sed -i 's/[“”]/"/g' scraper.py
+sed -i "s/[‘’]/'/g" scraper.py
 import os
 import json
 import logging
@@ -18,7 +19,7 @@ MIN_PROJ   = 5.0
 
 PAYOUTS = {2: 3, 3: 5, 4: 10, 5: 20}
 
-PROP_CATS = [“PTS”, “REB”, “AST”, “STL”, “BLK”, “PR”, “PA”, “RA”, “PRA”, “3PM”]
+PROP_CATS = ["PTS", "REB", "AST", "STL", "BLK", "PR", "PA", "RA", "PRA", "3PM"]
 
 COL_MAP = {
 “Player”: “Name”, “PLAYER”: “Name”,
