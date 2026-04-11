@@ -1,9 +1,6 @@
-"""
-app.py - Mackin Betz DVP Locks (Flask)
-"""
-
 from flask import Flask, render_template, jsonify
 import os
+import json
 from scraper import run_daily_scrape
 
 app = Flask(__name__)
@@ -13,18 +10,20 @@ REPORT_PATH = "data/latest_report.json"
 
 @app.route("/")
 def index():
+    report = None
     if os.path.exists(REPORT_PATH):
-        with open(REPORT_PATH, "r") as f:
-            report = f.read()
-        return render_template("index.html", report=report)
-    else:
-        return render_template("index.html", report=None)
+        try:
+            with open(REPORT_PATH, "r") as f:
+                report = json.load(f)
+        except:
+            report = None
+    return render_template("index.html", report=report)
 
 
 @app.route("/refresh")
 def refresh():
     try:
-        report = run_daily_scrape(REPORT_PATH)
+        run_daily_scrape(REPORT_PATH)
         return jsonify({"message": "Report refreshed successfully!", "status": "ok"})
     except Exception as e:
         return jsonify({"message": str(e), "status": "error"}), 500
@@ -34,10 +33,9 @@ def refresh():
 def api_report():
     if os.path.exists(REPORT_PATH):
         with open(REPORT_PATH, "r") as f:
-            report = f.read()
+            report = json.load(f)
         return jsonify(report)
-    else:
-        return jsonify({"message": "No report data available yet.", "status": "error"})
+    return jsonify({"message": "No report data available yet.", "status": "error"})
 
 
 if __name__ == "__main__":
