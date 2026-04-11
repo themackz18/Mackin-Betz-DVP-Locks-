@@ -1,27 +1,45 @@
-import os
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
-import uvicorn
+"""
+app.py - Mackin Betz DVP Locks (Flask)
+"""
 
+from flask import Flask, render_template, jsonify
+import os
 from scraper import run_daily_scrape
 
-app = FastAPI(title="Mackin Betz DVP Locks")
+app = Flask(__name__)
 
-@app.get("/")
-async def get_report():
+REPORT_PATH = "data/latest_report.json"
+
+
+@app.route("/")
+def index():
+    if os.path.exists(REPORT_PATH):
+        with open(REPORT_PATH, "r") as f:
+            report = f.read()
+        return render_template("index.html", report=report)
+    else:
+        return render_template("index.html", report=None)
+
+
+@app.route("/refresh")
+def refresh():
     try:
-        report = run_daily_scrape("output/daily_report.json")
-        return report
+        report = run_daily_scrape(REPORT_PATH)
+        return jsonify({"message": "Report refreshed successfully!", "status": "ok"})
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"error": str(e), "message": "Make sure data/fallback.csv exists and is valid."}
-        )
+        return jsonify({"message": str(e), "status": "error"}), 500
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
+
+@app.route("/api/report")
+def api_report():
+    if os.path.exists(REPORT_PATH):
+        with open(REPORT_PATH, "r") as f:
+            report = f.read()
+        return jsonify(report)
+    else:
+        return jsonify({"message": "No report data available yet.", "status": "error"})
+
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port, debug=False)
