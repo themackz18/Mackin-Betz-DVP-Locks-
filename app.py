@@ -9,7 +9,7 @@ logger = logging.getLogger(**name**)
 
 app = Flask(**name**)
 
-REPORT_PATH = “data/report.json”
+REPORT_PATH = ‘data/report.json’
 
 def load_report():
 if os.path.exists(REPORT_PATH):
@@ -20,42 +20,42 @@ return None
 def get_or_build_report():
 report = load_report()
 if report is None:
-logger.info(“No report found - building now”)
+logger.info(‘No report found - building now’)
 try:
 report = run_daily_scrape(REPORT_PATH)
 except Exception as e:
-logger.error(“Failed to build report: %s”, e)
+logger.error(‘Failed to build report: %s’, e)
 report = {
-“generated_at”: “Not available”,
-“slate_date”: “”,
-“game_count”: 0,
-“same_game_p4”: [],
-“slips”: {“2”: [], “3”: [], “4”: [], “5”: []},
-“category_leaders”: [],
-“top_locks”: [],
-“value_plays”: [],
+‘generated_at’: ‘Not available’,
+‘slate_date’: ‘’,
+‘game_count’: 0,
+‘same_game_p4’: [],
+‘slips’: {‘2’: [], ‘3’: [], ‘4’: [], ‘5’: []},
+‘category_leaders’: [],
+‘top_locks’: [],
+‘value_plays’: [],
 }
 return report
 
-@app.route(”/”)
+@app.route(’/’)
 def index():
 report = get_or_build_report()
-return render_template(“index.html”, report=report)
+return render_template(‘index.html’, report=report)
 
-@app.route(”/refresh”)
+@app.route(’/refresh’)
 def refresh():
 try:
 run_daily_scrape(REPORT_PATH)
-logger.info(“Report refreshed successfully”)
+logger.info(‘Report refreshed successfully’)
 except Exception as e:
-logger.error(“Refresh failed: %s”, e)
-return redirect(url_for(“index”))
+logger.error(‘Refresh failed: %s’, e)
+return redirect(url_for(‘index’))
 
-@app.route(”/api/report”)
+@app.route(’/api/report’)
 def api_report():
 report = get_or_build_report()
 return jsonify(report)
 
-if **name** == “**main**”:
-port = int(os.environ.get(“PORT”, 8080))
-app.run(host=“0.0.0.0”, port=port, debug=False)
+if **name** == ‘**main**’:
+port = int(os.environ.get(‘PORT’, 8080))
+app.run(host=‘0.0.0.0’, port=port, debug=False)
