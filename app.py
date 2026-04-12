@@ -1,43 +1,61 @@
-from flask import Flask, render_template, jsonify
 import os
 import json
+import logging
+from flask import Flask, render_template, jsonify, redirect, url_for
 from scraper import run_daily_scrape
 
-app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(**name**)
 
-REPORT_PATH = "data/latest_report.json"
+app = Flask(**name**)
 
+REPORT_PATH = “data/report.json”
 
-@app.route("/")
+def load_report():
+if os.path.exists(REPORT_PATH):
+with open(REPORT_PATH) as f:
+return json.load(f)
+return None
+
+def get_or_build_report():
+report = load_report()
+if report is None:
+logger.info(“No report found - building now”)
+try:
+report = run_daily_scrape(REPORT_PATH)
+except Exception as e:
+logger.error(“Failed to build report: %s”, e)
+report = {
+“generated_at”: “Not available”,
+“slate_date”: “”,
+“game_count”: 0,
+“same_game_p4”: [],
+“slips”: {“2”: [], “3”: [], “4”: [], “5”: []},
+“category_leaders”: [],
+“top_locks”: [],
+“value_plays”: [],
+}
+return report
+
+@app.route(”/”)
 def index():
-    report = None
-    if os.path.exists(REPORT_PATH):
-        try:
-            with open(REPORT_PATH, "r") as f:
-                report = json.load(f)
-        except:
-            report = None
-    return render_template("index.html", report=report)
+report = get_or_build_report()
+return render_template(“index.html”, report=report)
 
-
-@app.route("/refresh")
+@app.route(”/refresh”)
 def refresh():
-    try:
-        run_daily_scrape(REPORT_PATH)
-        return jsonify({"message": "Report refreshed successfully!", "status": "ok"})
-    except Exception as e:
-        return jsonify({"message": str(e), "status": "error"}), 500
+try:
+run_daily_scrape(REPORT_PATH)
+logger.info(“Report refreshed successfully”)
+except Exception as e:
+logger.error(“Refresh failed: %s”, e)
+return redirect(url_for(“index”))
 
-
-@app.route("/api/report")
+@app.route(”/api/report”)
 def api_report():
-    if os.path.exists(REPORT_PATH):
-        with open(REPORT_PATH, "r") as f:
-            report = json.load(f)
-        return jsonify(report)
-    return jsonify({"message": "No report data available yet.", "status": "error"})
+report = get_or_build_report()
+return jsonify(report)
 
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+if **name** == “**main**”:
+port = int(os.environ.get(“PORT”, 8080))
+app.run(host=“0.0.0.0”, port=port, debug=False)
