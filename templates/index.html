@@ -4,43 +4,197 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mackin Betz DVP Locks</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; background: #05040a; color: #e8e0f8; padding: 20px; }
-        h1 { color: #f5c518; }
-        .card { background: #1a1728; border: 1px solid #2a2444; padding: 15px; margin: 15px 0; border-radius: 8px; }
+        :root {
+            --black:    #05040a;
+            --deep:     #0c0a14;
+            --card:     #1a1728;
+            --border:   #2a2444;
+            --purple:   #7c3aed;
+            --purple2:  #9d5cf6;
+            --gold:     #f5c518;
+            --gold2:    #ffd966;
+            --green:    #10b981;
+            --text:     #e8e0f8;
+            --muted:    #6b6485;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Barlow', sans-serif;
+            background: var(--black);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse 80% 40% at 50% 0%, rgba(124,58,237,0.18) 0%, transparent 70%),
+                        radial-gradient(ellipse 60% 30% at 20% 100%, rgba(245,197,24,0.07) 0%, transparent 60%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        header {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 28px 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo-wrap { position: relative; display: inline-block; margin-bottom: 6px; }
+
+        #flameCanvas {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: -10px;
+            width: 340px;
+            height: 120px;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .logo-text {
+            font-family: 'Cinzel Decorative', serif;
+            font-size: clamp(1.8rem, 5vw, 2.8rem);
+            font-weight: 900;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, #f5c518 0%, #ffd966 40%, #9d5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .tabs {
+            display: flex;
+            background: var(--deep);
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 14px 8px;
+            text-align: center;
+            cursor: pointer;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--muted);
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab.active {
+            color: var(--gold);
+            border-bottom-color: var(--gold);
+        }
+
+        .pane { display: none; padding: 20px 16px; }
+        .pane.active { display: block; }
+
+        .game-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            padding: 14px;
+        }
+
+        .player-row {
+            background: rgba(255,255,255,0.03);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 6px;
+        }
+
+        .footer { text-align: center; padding: 30px; color: var(--muted); font-size: 0.8rem; }
     </style>
 </head>
 <body>
-    <h1>🔒 Mackin Betz DVP Locks</h1>
-    <p>Last updated: {{ report.generated_at | default('Unknown') }} | Games: {{ report.game_count | default(0) }}</p>
 
-    <div class="card">
-        <h2>Same Game P4s</h2>
-        {% if report.same_game_p4 %}
-            {% for game in report.same_game_p4 %}
-                <div class="card">
-                    <strong>{{ game.game }}</strong><br>
-                    Alpha count: {{ game.alpha | length if game.alpha else 0 }}
-                </div>
-            {% endfor %}
-        {% else %}
-            <p>No P4 data yet.</p>
-        {% endif %}
+<header>
+    <div class="logo-wrap">
+        <canvas id="flameCanvas"></canvas>
+        <div class="logo-text">Mackin Betz</div>
     </div>
-
-    <div class="card">
-        <h2>Top Locks</h2>
-        {% if report.top_locks %}
-            <ul>
-            {% for p in report.top_locks %}
-                <li>{{ p.name }} — Proj: {{ p.proj }} | DVP: {{ p.dvp }}</li>
-            {% endfor %}
-            </ul>
-        {% else %}
-            <p>No locks yet.</p>
-        {% endif %}
+    <div style="font-size:0.75rem; color:var(--muted); letter-spacing:3px;">DVP LOCKS • PROPS INTELLIGENCE</div>
+    <div style="margin-top:8px; font-size:0.75rem; color:var(--muted);">
+        Updated: {{ report.generated_at | default('Unknown') }} • {{ report.game_count | default(0) }} games
     </div>
+</header>
 
-    <p><a href="/refresh">Refresh Report</a> | <a href="/api/report">View JSON</a></p>
+<div class="tabs">
+    <div class="tab active" onclick="showTab(0)">P4s</div>
+    <div class="tab" onclick="showTab(1)">Slips</div>
+    <div class="tab" onclick="showTab(2)">Leaders</div>
+    <div class="tab" onclick="showTab(3)">Locks</div>
+    <div class="tab" onclick="showTab(4)">Value</div>
+</div>
+
+<!-- Tab 0: Same Game P4s -->
+<div id="pane0" class="pane active">
+    <h2 style="color:var(--gold); margin-bottom:16px;">Same-Game Power4s</h2>
+    {% if report.same_game_p4 %}
+        {% for game in report.same_game_p4 %}
+        <div class="game-card">
+            <strong style="color:var(--gold);">{{ game.game }}</strong><br>
+            <span style="color:var(--purple2);">Alpha: {{ game.alpha|length if game.alpha else 0 }} players</span>
+            {% for p in game.alpha[:4] %}
+            <div class="player-row">
+                <strong>{{ p.name }}</strong> ({{ p.team }}) — {{ p.proj }} proj • DVP {{ p.dvp }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <p style="color:var(--muted);">No P4 data available yet.</p>
+    {% endif %}
+</div>
+
+<!-- Other tabs (simple placeholders for now) -->
+<div id="pane1" class="pane"><h2 style="color:var(--gold);">Prop Slips</h2><p style="color:var(--muted);">Coming soon...</p></div>
+<div id="pane2" class="pane"><h2 style="color:var(--gold);">Category Leaders</h2><p style="color:var(--muted);">Coming soon...</p></div>
+<div id="pane3" class="pane"><h2 style="color:var(--gold);">Top Locks</h2><p style="color:var(--muted);">Coming soon...</p></div>
+<div id="pane4" class="pane"><h2 style="color:var(--gold);">Value Plays</h2><p style="color:var(--muted);">Coming soon...</p></div>
+
+<div class="footer">
+    <a href="/refresh" style="color:var(--purple2);">🔄 Refresh Report</a> &nbsp;|&nbsp; 
+    <a href="/api/report" style="color:var(--purple2);">View JSON</a>
+</div>
+
+<script>
+function showTab(n) {
+    document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===n));
+    document.querySelectorAll('.pane').forEach((p,i) => p.classList.toggle('active', i===n));
+}
+
+// Simple flame animation
+(function() {
+    const canvas = document.getElementById('flameCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = 340; canvas.height = 120;
+
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Simple glowing particles
+        for (let i = 0; i < 8; i++) {
+            const x = 80 + Math.sin(Date.now()/400 + i) * 40;
+            ctx.fillStyle = 'rgba(255, 180, 60, 0.7)';
+            ctx.beginPath();
+            ctx.arc(x + i*25, 80 - i*3, 12 - i, 0, Math.PI*2);
+            ctx.fill();
+        }
+        requestAnimationFrame(animate);
+    }
+    animate();
+})();
+</script>
+
 </body>
 </html>
