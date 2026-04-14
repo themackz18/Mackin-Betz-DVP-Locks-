@@ -27,6 +27,7 @@
             background: var(--black);
             color: var(--text);
             min-height: 100vh;
+            overflow-x: hidden;
         }
 
         body::before {
@@ -43,31 +44,45 @@
             position: relative;
             z-index: 10;
             text-align: center;
-            padding: 28px 16px 20px;
+            padding: 32px 16px 24px;
             border-bottom: 1px solid var(--border);
         }
 
-        .logo-wrap { position: relative; display: inline-block; margin-bottom: 6px; }
+        .logo-wrap { position: relative; display: inline-block; margin-bottom: 8px; }
 
         #flameCanvas {
             position: absolute;
             left: 50%;
             transform: translateX(-50%);
-            bottom: -10px;
-            width: 340px;
-            height: 120px;
+            bottom: -12px;
+            width: 360px;
+            height: 130px;
             pointer-events: none;
             z-index: 1;
         }
 
         .logo-text {
             font-family: 'Cinzel Decorative', serif;
-            font-size: clamp(1.8rem, 5vw, 2.8rem);
+            font-size: clamp(1.9rem, 6vw, 3rem);
             font-weight: 900;
-            letter-spacing: 2px;
-            background: linear-gradient(135deg, #f5c518 0%, #ffd966 40%, #9d5cf6 100%);
+            letter-spacing: 3px;
+            background: linear-gradient(135deg, #f5c518 0%, #ffd966 45%, #9d5cf6 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+        }
+
+        .logo-sub {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 0.78rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .updated {
+            margin-top: 10px;
+            font-size: 0.75rem;
+            color: var(--muted);
         }
 
         .tabs {
@@ -75,18 +90,21 @@
             background: var(--deep);
             border-bottom: 1px solid var(--border);
             overflow-x: auto;
+            padding: 0 4px;
         }
 
         .tab {
             flex: 1;
-            padding: 14px 8px;
+            padding: 16px 8px 12px;
             text-align: center;
             cursor: pointer;
             font-family: 'Barlow Condensed', sans-serif;
             font-weight: 700;
+            font-size: 0.82rem;
             text-transform: uppercase;
             color: var(--muted);
             border-bottom: 3px solid transparent;
+            transition: all 0.2s;
         }
 
         .tab.active {
@@ -94,107 +112,4 @@
             border-bottom-color: var(--gold);
         }
 
-        .pane { display: none; padding: 20px 16px; }
-        .pane.active { display: block; }
-
-        .game-card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            margin-bottom: 12px;
-            padding: 14px;
-        }
-
-        .player-row {
-            background: rgba(255,255,255,0.03);
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 6px;
-        }
-
-        .footer { text-align: center; padding: 30px; color: var(--muted); font-size: 0.8rem; }
-    </style>
-</head>
-<body>
-
-<header>
-    <div class="logo-wrap">
-        <canvas id="flameCanvas"></canvas>
-        <div class="logo-text">Mackin Betz</div>
-    </div>
-    <div style="font-size:0.75rem; color:var(--muted); letter-spacing:3px;">DVP LOCKS • PROPS INTELLIGENCE</div>
-    <div style="margin-top:8px; font-size:0.75rem; color:var(--muted);">
-        Updated: {{ report.generated_at | default('Unknown') }} • {{ report.game_count | default(0) }} games
-    </div>
-</header>
-
-<div class="tabs">
-    <div class="tab active" onclick="showTab(0)">P4s</div>
-    <div class="tab" onclick="showTab(1)">Slips</div>
-    <div class="tab" onclick="showTab(2)">Leaders</div>
-    <div class="tab" onclick="showTab(3)">Locks</div>
-    <div class="tab" onclick="showTab(4)">Value</div>
-</div>
-
-<!-- Tab 0: Same Game P4s -->
-<div id="pane0" class="pane active">
-    <h2 style="color:var(--gold); margin-bottom:16px;">Same-Game Power4s</h2>
-    {% if report.same_game_p4 %}
-        {% for game in report.same_game_p4 %}
-        <div class="game-card">
-            <strong style="color:var(--gold);">{{ game.game }}</strong><br>
-            <span style="color:var(--purple2);">Alpha: {{ game.alpha|length if game.alpha else 0 }} players</span>
-            {% for p in game.alpha[:4] %}
-            <div class="player-row">
-                <strong>{{ p.name }}</strong> ({{ p.team }}) — {{ p.proj }} proj • DVP {{ p.dvp }}
-            </div>
-            {% endfor %}
-        </div>
-        {% endfor %}
-    {% else %}
-        <p style="color:var(--muted);">No P4 data available yet.</p>
-    {% endif %}
-</div>
-
-<!-- Other tabs (simple placeholders for now) -->
-<div id="pane1" class="pane"><h2 style="color:var(--gold);">Prop Slips</h2><p style="color:var(--muted);">Coming soon...</p></div>
-<div id="pane2" class="pane"><h2 style="color:var(--gold);">Category Leaders</h2><p style="color:var(--muted);">Coming soon...</p></div>
-<div id="pane3" class="pane"><h2 style="color:var(--gold);">Top Locks</h2><p style="color:var(--muted);">Coming soon...</p></div>
-<div id="pane4" class="pane"><h2 style="color:var(--gold);">Value Plays</h2><p style="color:var(--muted);">Coming soon...</p></div>
-
-<div class="footer">
-    <a href="/refresh" style="color:var(--purple2);">🔄 Refresh Report</a> &nbsp;|&nbsp; 
-    <a href="/api/report" style="color:var(--purple2);">View JSON</a>
-</div>
-
-<script>
-function showTab(n) {
-    document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===n));
-    document.querySelectorAll('.pane').forEach((p,i) => p.classList.toggle('active', i===n));
-}
-
-// Simple flame animation
-(function() {
-    const canvas = document.getElementById('flameCanvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    canvas.width = 340; canvas.height = 120;
-
-    function animate() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        // Simple glowing particles
-        for (let i = 0; i < 8; i++) {
-            const x = 80 + Math.sin(Date.now()/400 + i) * 40;
-            ctx.fillStyle = 'rgba(255, 180, 60, 0.7)';
-            ctx.beginPath();
-            ctx.arc(x + i*25, 80 - i*3, 12 - i, 0, Math.PI*2);
-            ctx.fill();
-        }
-        requestAnimationFrame(animate);
-    }
-    animate();
-})();
-</script>
-
-</body>
-</html>
+        .pane { display: none; padding: 20px 16px
