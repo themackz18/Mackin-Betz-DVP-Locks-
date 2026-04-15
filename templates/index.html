@@ -27,6 +27,7 @@
             background: var(--black);
             color: var(--text);
             min-height: 100vh;
+            line-height: 1.5;
         }
 
         body::before {
@@ -80,36 +81,11 @@
 
         .updated { margin-top: 10px; font-size: 0.75rem; color: var(--muted); }
 
-        .tabs {
-            display: flex;
-            background: var(--deep);
-            border-bottom: 1px solid var(--border);
-            overflow-x: auto;
-        }
+        section { padding: 20px 16px; margin-bottom: 40px; position: relative; z-index: 5; }
 
-        .tab {
-            flex: 1;
-            padding: 16px 8px 12px;
-            text-align: center;
-            cursor: pointer;
-            font-family: 'Barlow Condensed', sans-serif;
-            font-weight: 700;
-            font-size: 0.82rem;
-            text-transform: uppercase;
-            color: var(--muted);
-            border-bottom: 3px solid transparent;
-            transition: all 0.2s;
-        }
+        h2 { color: var(--gold); margin-bottom: 16px; font-size: 1.5rem; }
 
-        .tab.active {
-            color: var(--gold);
-            border-bottom-color: var(--gold);
-        }
-
-        .pane { display: none; padding: 20px 16px; }
-        .pane.active { display: block; }
-
-        .game-card, .slip-card {
+        .game-card, .slip-card, .leader-card {
             background: var(--card);
             border: 1px solid var(--border);
             border-radius: 12px;
@@ -125,6 +101,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
         }
 
         .target-prop {
@@ -137,6 +114,7 @@
             color: var(--muted);
             font-size: 0.82rem;
             margin-top: 4px;
+            width: 100%;
         }
 
         .footer {
@@ -161,22 +139,13 @@
     </div>
 </header>
 
-<div class="tabs">
-    <div class="tab active" onclick="showTab(0)">Today's P4s</div>
-    <div class="tab" onclick="showTab(1)">Slips</div>
-    <div class="tab" onclick="showTab(2)">Category Leaders</div>
-    <div class="tab" onclick="showTab(3)">Top Locks</div>
-    <div class="tab" onclick="showTab(4)">Value Plays</div>
-    <div class="tab" onclick="showTab(5)">Slip Builder</div>
-</div>
-
-<!-- Tab 0: Today's P4s -->
-<div id="pane0" class="pane active">
-    <h2 style="color: var(--gold); margin-bottom: 20px;">Same-Game Power4s</h2>
+<!-- Same-Game Power4s -->
+<section id="p4s">
+    <h2>Same-Game Power4s</h2>
     {% if report.same_game_p4 %}
         {% for game in report.same_game_p4 %}
         <div class="game-card">
-            <div style="font-weight:700; color:var(--gold); font-size:1.1rem; margin-bottom:12px;">
+            <div style="font-weight:700; color:var(--gold); font-size:1.2rem; margin-bottom:12px;">
                 {{ game.game | default('Game') }}
             </div>
             {% if game.alpha %}
@@ -199,13 +168,13 @@
         </div>
         {% endfor %}
     {% else %}
-        <p style="color:var(--muted);">No P4 data yet.</p>
+        <p style="color:var(--muted);">No P4 data yet. Refresh Report.</p>
     {% endif %}
-</div>
+</section>
 
-<!-- Tab 1: Slips - Improved with clear target_prop and real stats -->
-<div id="pane1" class="pane">
-    <h2 style="color: var(--gold); margin-bottom: 20px;">Recommended Slips</h2>
+<!-- Recommended Slips -->
+<section id="slips">
+    <h2>Recommended Slips</h2>
     {% if report.slips %}
         {% for size in ['2','3','4','5'] %}
             {% set slip_list = report.slips.get(size, []) %}
@@ -235,14 +204,14 @@
     {% else %}
         <p style="color:var(--muted);">No slips generated yet.</p>
     {% endif %}
-</div>
+</section>
 
-<!-- Tab 2: Category Leaders -->
-<div id="pane2" class="pane">
-    <h2 style="color: var(--gold); margin-bottom: 20px;">Category Leaders</h2>
+<!-- Category Leaders -->
+<section id="leaders">
+    <h2>Category Leaders</h2>
     {% if report.category_leaders %}
         {% for cat in report.category_leaders %}
-        <div class="game-card">
+        <div class="leader-card">
             <h3 style="color:var(--purple2);">{{ cat.category | default('Category') }}</h3>
             {% for p in cat.players %}
             <div class="player-row">
@@ -260,11 +229,11 @@
     {% else %}
         <p style="color:var(--muted);">No category leaders yet.</p>
     {% endif %}
-</div>
+</section>
 
-<!-- Tab 3: Top Locks -->
-<div id="pane3" class="pane">
-    <h2 style="color: var(--gold); margin-bottom: 20px;">Top Locks</h2>
+<!-- Top Locks -->
+<section id="locks">
+    <h2>Top Locks (Target vs DVP)</h2>
     {% if report.top_locks %}
         {% for p in report.top_locks %}
         <div class="player-row">
@@ -272,7 +241,7 @@
                 <strong>{{ p.name | default('Player') }}</strong>
                 <span class="target-prop">• {{ p.target_prop | default('PRA') }}</span><br>
                 <span class="stats-breakdown">
-                    PTS {{ p.pts | default(0) }} | REB {{ p.reb | default(0) }} | AST {{ p.ast | default(0) }}
+                    PTS {{ p.pts | default(0) }} | REB {{ p.reb | default(0) }} | AST {{ p.ast | default(0) }} | 3PM {{ p.threepm | default(0) }}
                 </span>
             </div>
             <div style="text-align:right;">
@@ -283,11 +252,11 @@
     {% else %}
         <p style="color:var(--muted);">No top locks yet.</p>
     {% endif %}
-</div>
+</section>
 
-<!-- Tab 4: Value Plays -->
-<div id="pane4" class="pane">
-    <h2 style="color: var(--gold); margin-bottom: 20px;">Value Plays</h2>
+<!-- Value Plays -->
+<section id="value">
+    <h2>Value Plays (Target vs DVP)</h2>
     {% if report.value_plays %}
         {% for p in report.value_plays %}
         <div class="player-row">
@@ -295,7 +264,7 @@
                 <strong>{{ p.name | default('Player') }}</strong>
                 <span class="target-prop">• {{ p.target_prop | default('PRA') }}</span><br>
                 <span class="stats-breakdown">
-                    PTS {{ p.pts | default(0) }} | REB {{ p.reb | default(0) }} | AST {{ p.ast | default(0) }}
+                    PTS {{ p.pts | default(0) }} | REB {{ p.reb | default(0) }} | AST {{ p.ast | default(0) }} | 3PM {{ p.threepm | default(0) }}
                 </span>
             </div>
             <div style="text-align:right;">
@@ -306,12 +275,12 @@
     {% else %}
         <p style="color:var(--muted);">No value plays yet.</p>
     {% endif %}
-</div>
+</section>
 
-<!-- Tab 5: Slip Builder -->
-<div id="pane5" class="pane">
-    <h2 style="color: var(--gold); margin-bottom: 12px;">Custom Slip Builder</h2>
-    <p style="color:var(--muted); margin-bottom:20px;">Click players to build your own slip (max 5 legs).</p>
+<!-- Custom Slip Builder -->
+<section id="builder">
+    <h2>Custom Slip Builder</h2>
+    <p style="color:var(--muted); margin-bottom:20px;">Click players below to build your own slip (max 5 legs).</p>
 
     <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;" id="builder-pool">
         <!-- JS populated -->
@@ -326,7 +295,7 @@
         </div>
         <button onclick="clearSlip()" style="margin-top:12px; background:var(--purple); color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer;">Clear Slip</button>
     </div>
-</div>
+</section>
 
 <div class="footer">
     <a href="/refresh" style="color:var(--purple2);">🔄 Refresh Report</a> &nbsp;•&nbsp; 
@@ -334,12 +303,6 @@
 </div>
 
 <script>
-// Tab switching
-function showTab(n) {
-    document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === n));
-    document.querySelectorAll('.pane').forEach((p, i) => p.classList.toggle('active', i === n));
-}
-
 // Flame animation
 (function() {
     const canvas = document.getElementById('flameCanvas');
@@ -363,7 +326,7 @@ function showTab(n) {
     animate();
 })();
 
-// Slip Builder
+// Simple Slip Builder (using report data)
 let selectedPlayers = [];
 const reportData = {{ report | tojson }};
 
@@ -425,10 +388,7 @@ function clearSlip() {
     renderBuilderPool();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    const builderTab = document.querySelectorAll('.tab')[5];
-    builderTab.addEventListener('click', () => setTimeout(renderBuilderPool, 100));
-});
+document.addEventListener('DOMContentLoaded', renderBuilderPool);
 </script>
 
 </body>
