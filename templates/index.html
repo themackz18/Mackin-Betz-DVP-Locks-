@@ -109,7 +109,7 @@
         .pane { display: none; padding: 20px 16px; }
         .pane.active { display: block; }
 
-        .game-card, .slip-card, .lock-card, .value-card {
+        .game-card, .slip-card {
             background: var(--card);
             border: 1px solid var(--border);
             border-radius: 12px;
@@ -158,7 +158,7 @@
     <div class="tab" onclick="showTab(5)">Slip Builder</div>
 </div>
 
-<!-- Tab 0: Same Game P4s -->
+<!-- Tab 0: Today's P4s -->
 <div id="pane0" class="pane active">
     <h2 style="color: var(--gold); margin-bottom: 20px;">Same-Game Power4s</h2>
     {% if report.same_game_p4 %}
@@ -185,7 +185,7 @@
         </div>
         {% endfor %}
     {% else %}
-        <p style="color:var(--muted);">No P4 data yet. Click Refresh Report.</p>
+        <p style="color:var(--muted);">No P4 data yet. Click Refresh Report after ensuring fallback.csv is present.</p>
     {% endif %}
 </div>
 
@@ -196,7 +196,7 @@
         {% for size in ['2','3','4','5'] %}
             {% set slip_list = report.slips.get(size, []) %}
             {% if slip_list %}
-            <h3 style="color:var(--purple2); margin:20px 0 10px;">{{ size }}-Leg Slips</h3>
+            <h3 style="color:var(--purple2);">{{ size }}-Leg Slips</h3>
             {% for slip in slip_list %}
             <div class="slip-card">
                 <strong>Total Proj: {{ slip.total_proj | default('N/A') }}</strong>
@@ -272,10 +272,10 @@
 <!-- Tab 5: Slip Builder -->
 <div id="pane5" class="pane">
     <h2 style="color: var(--gold); margin-bottom: 12px;">Custom Slip Builder</h2>
-    <p style="color:var(--muted); margin-bottom:20px;">Click players to build your own slip (max 5 legs).</p>
+    <p style="color:var(--muted); margin-bottom:20px;">Click players below to build your own slip (max 5 legs).</p>
 
     <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;" id="builder-pool">
-        <!-- Populated by JS -->
+        <!-- JS populated -->
     </div>
 
     <div class="slip-card">
@@ -324,7 +324,7 @@ function showTab(n) {
     animate();
 })();
 
-// Simple Slip Builder
+// Slip Builder
 let selectedPlayers = [];
 const reportData = {{ report | tojson }};
 
