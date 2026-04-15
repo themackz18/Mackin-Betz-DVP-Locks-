@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -7,148 +8,337 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
-            --black:    #05040a;
-            --deep:     #0c0a14;
-            --card:     #1a1728;
-            --border:   #2a2444;
-            --purple:   #7c3aed;
-            --purple2:  #9d5cf6;
-            --gold:     #f5c518;
-            --gold2:    #ffd966;
-            --green:    #10b981;
-            --text:     #e8e0f8;
-            --muted:    #6b6485;
+            --black:   #05040a;
+            --deep:    #0c0a14;
+            --card:    #1a1728;
+            --border:  #2a2444;
+            --purple:  #7c3aed;
+            --purple2: #9d5cf6;
+            --gold:    #f5c518;
+            --gold2:   #ffd966;
+            --green:   #10b981;
+            --red:     #ef4444;
+            --text:    #e8e0f8;
+            --muted:   #6b6485;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+```
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body {
-            font-family: 'Barlow', sans-serif;
-            background: var(--black);
-            color: var(--text);
-            min-height: 100vh;
-        }
+    body {
+        font-family: 'Barlow', sans-serif;
+        background: var(--black);
+        color: var(--text);
+        min-height: 100vh;
+    }
 
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background: radial-gradient(ellipse 80% 40% at 50% 0%, rgba(124,58,237,0.18) 0%, transparent 70%),
-                        radial-gradient(ellipse 60% 30% at 20% 100%, rgba(245,197,24,0.07) 0%, transparent 60%);
-            z-index: 0;
-        }
+    body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background:
+            radial-gradient(ellipse 80% 40% at 50% 0%, rgba(124,58,237,0.18) 0%, transparent 70%),
+            radial-gradient(ellipse 60% 30% at 20% 100%, rgba(245,197,24,0.07) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+    }
 
-        header {
-            position: relative;
-            z-index: 10;
-            text-align: center;
-            padding: 32px 16px 24px;
-            border-bottom: 1px solid var(--border);
-        }
+    /* ── HEADER ── */
+    header {
+        position: relative;
+        z-index: 10;
+        text-align: center;
+        padding: 32px 16px 24px;
+        border-bottom: 1px solid var(--border);
+    }
 
-        .logo-wrap { position: relative; display: inline-block; margin-bottom: 8px; }
+    .logo-wrap { position: relative; display: inline-block; margin-bottom: 8px; }
 
-        #flameCanvas {
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            bottom: -12px;
-            width: 360px;
-            height: 130px;
-            pointer-events: none;
-            z-index: 1;
-        }
+    #flameCanvas {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: -12px;
+        width: 360px;
+        height: 130px;
+        pointer-events: none;
+        z-index: 1;
+    }
 
-        .logo-text {
-            font-family: 'Cinzel Decorative', serif;
-            font-size: clamp(1.9rem, 6vw, 3rem);
-            font-weight: 900;
-            letter-spacing: 3px;
-            background: linear-gradient(135deg, #f5c518 0%, #ffd966 45%, #9d5cf6 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+    .logo-text {
+        position: relative;
+        z-index: 2;
+        font-family: 'Cinzel Decorative', serif;
+        font-size: clamp(1.9rem, 6vw, 3rem);
+        font-weight: 900;
+        letter-spacing: 3px;
+        background: linear-gradient(135deg, #f5c518 0%, #ffd966 45%, #9d5cf6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
 
-        .logo-sub {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 0.78rem;
-            letter-spacing: 4px;
-            text-transform: uppercase;
-            color: var(--muted);
-        }
+    .logo-sub {
+        font-family: 'Barlow Condensed', sans-serif;
+        font-size: 0.78rem;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        color: var(--muted);
+    }
 
-        .updated { margin-top: 10px; font-size: 0.75rem; color: var(--muted); }
+    .updated { margin-top: 10px; font-size: 0.75rem; color: var(--muted); }
 
-        .tabs {
-            display: flex;
-            background: var(--deep);
-            border-bottom: 1px solid var(--border);
-            overflow-x: auto;
-        }
+    /* ── TABS ── */
+    .tabs {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: flex;
+        background: var(--deep);
+        border-bottom: 1px solid var(--border);
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
 
-        .tab {
-            flex: 1;
-            padding: 16px 8px 12px;
-            text-align: center;
-            cursor: pointer;
-            font-family: 'Barlow Condensed', sans-serif;
-            font-weight: 700;
-            font-size: 0.82rem;
-            text-transform: uppercase;
-            color: var(--muted);
-            border-bottom: 3px solid transparent;
-            transition: all 0.2s;
-        }
+    .tab {
+        flex: 0 0 auto;
+        padding: 14px 14px 10px;
+        text-align: center;
+        cursor: pointer;
+        font-family: 'Barlow Condensed', sans-serif;
+        font-weight: 700;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--muted);
+        border-bottom: 3px solid transparent;
+        white-space: nowrap;
+        transition: color 0.2s, border-color 0.2s;
+        user-select: none;
+    }
 
-        .tab.active {
-            color: var(--gold);
-            border-bottom-color: var(--gold);
-        }
+    .tab:hover { color: var(--text); }
 
-        .pane { display: none; padding: 20px 16px; }
-        .pane.active { display: block; }
+    .tab.active {
+        color: var(--gold);
+        border-bottom-color: var(--gold);
+    }
 
-        .game-card, .slip-card, .leader-card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            margin-bottom: 16px;
-            padding: 16px;
-        }
+    /* ── PANES ── */
+    .pane {
+        display: none;
+        padding: 20px 16px 40px;
+        position: relative;
+        z-index: 1;
+    }
+    .pane.active { display: block; }
 
-        .player-row {
-            background: rgba(255,255,255,0.04);
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-        }
+    /* ── CARDS ── */
+    .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin-bottom: 16px;
+        padding: 16px;
+    }
 
-        .target-prop {
-            color: var(--purple2);
-            font-weight: 600;
-            margin-left: 8px;
-        }
+    .game-title {
+        font-weight: 700;
+        color: var(--gold);
+        font-size: 1.05rem;
+        margin-bottom: 12px;
+        font-family: 'Barlow Condensed', sans-serif;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+    }
 
-        .stats-breakdown {
-            color: var(--muted);
-            font-size: 0.82rem;
-            margin-top: 4px;
-            width: 100%;
-        }
+    /* ── PLAYER ROW ── */
+    .player-row {
+        background: rgba(255,255,255,0.04);
+        padding: 11px 12px;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
 
-        .footer {
-            text-align: center;
-            padding: 40px 20px 30px;
-            color: var(--muted);
-            font-size: 0.8rem;
-        }
-    </style>
+    .player-name {
+        font-weight: 700;
+        font-size: 0.95rem;
+    }
+
+    .prop-tag {
+        display: inline-block;
+        background: rgba(157,92,246,0.18);
+        color: var(--purple2);
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        padding: 2px 7px;
+        border-radius: 4px;
+        margin-left: 6px;
+    }
+
+    .stats-line {
+        color: var(--muted);
+        font-size: 0.8rem;
+        margin-top: 3px;
+    }
+
+    .dvp-val { color: var(--green); font-weight: 700; }
+    .proj-val { color: var(--text); font-weight: 700; }
+
+    /* ── SECTION HEADING ── */
+    .section-title {
+        font-family: 'Barlow Condensed', sans-serif;
+        font-weight: 700;
+        font-size: 1.15rem;
+        color: var(--gold);
+        margin-bottom: 16px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+    }
+
+    .sub-title {
+        font-family: 'Barlow Condensed', sans-serif;
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: var(--purple2);
+        margin: 20px 0 10px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+    }
+
+    /* ── SLIP HEADER ── */
+    .slip-header {
+        font-size: 0.85rem;
+        color: var(--muted);
+        margin-bottom: 10px;
+    }
+    .slip-header strong { color: var(--text); }
+
+    /* ── LEADER CATEGORY ── */
+    .leader-cat {
+        font-family: 'Barlow Condensed', sans-serif;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--purple2);
+        margin-bottom: 10px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+    }
+
+    .leader-val {
+        color: var(--gold);
+        font-weight: 700;
+        font-size: 0.9rem;
+    }
+
+    /* ── BUILDER ── */
+    .builder-pool {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+
+    .builder-chip {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+        font-size: 0.83rem;
+        transition: background 0.15s, border-color 0.15s;
+        user-select: none;
+    }
+    .builder-chip:hover { background: rgba(124,58,237,0.2); border-color: var(--purple); }
+    .builder-chip.selected { background: rgba(124,58,237,0.3); border-color: var(--purple2); color: var(--gold); }
+
+    .slip-summary {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+    }
+
+    .slip-summary h3 {
+        font-family: 'Barlow Condensed', sans-serif;
+        font-weight: 700;
+        font-size: 1rem;
+        color: var(--text);
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .slip-meta {
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+        font-size: 0.85rem;
+        color: var(--muted);
+    }
+
+    .slip-meta span { color: var(--gold); font-weight: 700; }
+    .payout-val { color: var(--purple2) !important; }
+
+    .btn-clear {
+        margin-top: 12px;
+        background: var(--purple);
+        color: white;
+        border: none;
+        padding: 9px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-family: 'Barlow Condensed', sans-serif;
+        font-weight: 700;
+        font-size: 0.9rem;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        transition: background 0.15s;
+    }
+    .btn-clear:hover { background: var(--purple2); }
+
+    .empty-msg { color: var(--muted); font-size: 0.9rem; padding: 8px 0; }
+
+    /* ── SHARP ODDS BADGE ── */
+    .sharp-badge {
+        display: inline-block;
+        background: rgba(245,197,24,0.12);
+        color: var(--gold2);
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-left: 6px;
+        border: 1px solid rgba(245,197,24,0.25);
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+        text-align: center;
+        padding: 32px 20px;
+        color: var(--muted);
+        font-size: 0.8rem;
+        border-top: 1px solid var(--border);
+    }
+    .footer a { color: var(--purple2); text-decoration: none; }
+    .footer a:hover { color: var(--gold); }
+</style>
+```
+
 </head>
 <body>
+
+<!-- HEADER -->
 
 <header>
     <div class="logo-wrap">
@@ -157,75 +347,74 @@
     </div>
     <div class="logo-sub">DVP Locks • Props Intelligence</div>
     <div class="updated">
-        Last updated: {{ report.generated_at | default('Unknown') }} • 
+        Last updated: {{ report.generated_at | default('Unknown') }} •
         {{ report.game_count | default(0) }} games on slate
     </div>
 </header>
 
-<div class="tabs">
-    <div class="tab active" data-tab="0">Today's P4s</div>
-    <div class="tab" data-tab="1">Slips</div>
-    <div class="tab" data-tab="2">Category Leaders</div>
-    <div class="tab" data-tab="3">Top Locks</div>
-    <div class="tab" data-tab="4">Value Plays</div>
-    <div class="tab" data-tab="5">Slip Builder</div>
-</div>
+<!-- TABS -->
 
-<!-- Tab 0: Today's P4s -->
-<div id="pane0" class="pane active">
-    <h2 style="color: var(--gold); margin-bottom: 20px;">Same-Game Power4s</h2>
+<nav class="tabs" id="tabBar">
+    <div class="tab active" data-pane="pane-p4">Today's P4s</div>
+    <div class="tab" data-pane="pane-slips">Slips</div>
+    <div class="tab" data-pane="pane-leaders">Leaders</div>
+    <div class="tab" data-pane="pane-locks">Top Locks</div>
+    <div class="tab" data-pane="pane-value">Value Plays</div>
+    <div class="tab" data-pane="pane-builder">Slip Builder</div>
+</nav>
+
+<!-- PANE: Today's P4s -->
+
+<div id="pane-p4" class="pane active">
+    <div class="section-title">Same-Game Power4s</div>
     {% if report.same_game_p4 and report.same_game_p4|length > 0 %}
         {% for game in report.same_game_p4 %}
-        <div class="game-card">
-            <div style="font-weight:700; color:var(--gold); font-size:1.1rem; margin-bottom:12px;">
-                {{ game.game | default('Game') }}
-            </div>
-            {% if game.alpha and game.alpha|length > 0 %}
-                {% for p in game.alpha %}
-                <div class="player-row">
-                    <div style="flex:1;">
-                        <strong>{{ p.name | default('Player') }}</strong>
-                        <span class="target-prop">• {{ p.target_prop | default('PRA') }}</span><br>
-                        <span class="stats-breakdown">
-                            PTS {{ p.pts | default(0) }} | REB {{ p.reb | default(0) }} | AST {{ p.ast | default(0) }} | 3PM {{ p.threepm | default(0) }}
-                        </span>
-                    </div>
-                    <div style="text-align:right;">
-                        DVP <strong style="color:var(--green);">{{ p.dvp | default(0) }}</strong><br>
-                        Proj <strong>{{ p.proj | default('N/A') }}</strong>
-                    </div>
+        <div class="card">
+            <div class="game-title">{{ game.game | default('Game') }}</div>
+            {% for p in game.alpha | default([]) %}
+            <div class="player-row">
+                <div style="flex:1; min-width:0;">
+                    <span class="player-name">{{ p.name | default('Player') }}</span>
+                    <span class="prop-tag">{{ p.target_prop | default('PRA') }}</span>
+                    <div class="stats-line">PTS {{ p.pts | default(0) }} | REB {{ p.reb | default(0) }} | AST {{ p.ast | default(0) }} | 3PM {{ p.threepm | default(0) }}</div>
                 </div>
-                {% endfor %}
-            {% endif %}
+                <div style="text-align:right; flex-shrink:0;">
+                    DVP <span class="dvp-val">{{ p.dvp | default(0) }}</span><br>
+                    Proj <span class="proj-val">{{ p.proj | default('N/A') }}</span>
+                </div>
+            </div>
+            {% endfor %}
         </div>
         {% endfor %}
     {% else %}
-        <p style="color:var(--muted);">No P4 data yet.</p>
+        <p class="empty-msg">No P4 data available.</p>
     {% endif %}
 </div>
 
-<!-- Tab 1: Slips -->
-<div id="pane1" class="pane">
-    <h2 style="color: var(--gold); margin-bottom: 20px;">Recommended Slips</h2>
+<!-- PANE: Slips -->
+
+<div id="pane-slips" class="pane">
+    <div class="section-title">Recommended Slips</div>
     {% if report.slips %}
         {% for size in ['2','3','4','5'] %}
             {% set slip_list = report.slips.get(size, []) %}
             {% if slip_list and slip_list|length > 0 %}
-            <h3 style="color:var(--purple2); margin:20px 0 10px;">{{ size }}-Leg Slips</h3>
+            <div class="sub-title">{{ size }}-Leg Slips</div>
             {% for slip in slip_list %}
-            <div class="slip-card">
-                <strong>Total Proj: {{ slip.total_proj | default('N/A') }} • Target: {{ slip.target_prop | default('PRA') }}</strong>
-                {% for p in slip.players %}
+            <div class="card">
+                <div class="slip-header">
+                    Total Proj: <strong>{{ slip.total_proj | default('N/A') }}</strong> &nbsp;•&nbsp;
+                    Target: <strong>{{ slip.target_prop | default('PRA') }}</strong>
+                </div>
+                {% for p in slip.players | default([]) %}
                 <div class="player-row">
-                    <div style="flex:1;">
-                        <strong>{{ p.name | default('Player') }}</strong>
-                        <span class="target-prop">• {{ p.target_prop | default('PRA') }}</span><br>
-                        <span class="stats-breakdown">
-                            PTS {{ p.pts | default(0) }} | REB {{ p.reb | default(0) }} | AST {{ p.ast | default(0) }} | 3PM {{ p.threepm | default(0) }}
-                        </span>
+                    <div style="flex:1; min-width:0;">
+                        <span class="player-name">{{ p.name | default('Player') }}</span>
+                        <span class="prop-tag">{{ p.target_prop | default('PRA') }}</span>
+                        <div class="stats-line">PTS {{ p.pts | default(0) }} | REB {{ p.reb | default(0) }} | AST {{ p.ast | default(0) }} | 3PM {{ p.threepm | default(0) }}</div>
                     </div>
-                    <div style="text-align:right;">
-                        DVP <strong style="color:var(--green);">{{ p.dvp | default(0) }}</strong>
+                    <div style="text-align:right; flex-shrink:0;">
+                        DVP <span class="dvp-val">{{ p.dvp | default(0) }}</span>
                     </div>
                 </div>
                 {% endfor %}
@@ -234,147 +423,140 @@
             {% endif %}
         {% endfor %}
     {% else %}
-        <p style="color:var(--muted);">No slips generated yet.</p>
+        <p class="empty-msg">No slips generated yet.</p>
     {% endif %}
 </div>
 
-<!-- Tab 2: Category Leaders -->
-<div id="pane2" class="pane">
-    <h2 style="color: var(--gold); margin-bottom: 20px;">Category Leaders</h2>
+<!-- PANE: Category Leaders -->
+
+<div id="pane-leaders" class="pane">
+    <div class="section-title">Category Leaders</div>
     {% if report.category_leaders and report.category_leaders|length > 0 %}
         {% for cat in report.category_leaders %}
-        <div class="leader-card">
-            <h3 style="color:var(--purple2);">{{ cat.category | default('Category') }}</h3>
-            {% for p in cat.players %}
+        <div class="card">
+            <div class="leader-cat">{{ cat.category | default('Category') }}</div>
+            {% for p in cat.players | default([]) %}
             <div class="player-row">
                 <div style="flex:1;">
-                    <strong>{{ p.name | default('Player') }}</strong>
-                    <span class="target-prop">• {{ p.target_prop | default('PRA') }}</span>
+                    <span class="player-name">{{ p.name | default('Player') }}</span>
+                    <span class="prop-tag">{{ p.target_prop | default('PRA') }}</span>
                 </div>
-                <div style="text-align:right; color:var(--gold);">
-                    {{ cat.category }}: {{ p.best_val | default('N/A') }}
-                </div>
+                <div class="leader-val">{{ cat.category }}: {{ p.best_val | default('N/A') }}</div>
             </div>
             {% endfor %}
         </div>
         {% endfor %}
     {% else %}
-        <p style="color:var(--muted);">No category leaders yet.</p>
+        <p class="empty-msg">No category leaders yet.</p>
     {% endif %}
 </div>
 
-<!-- Tab 3: Top Locks -->
-<div id="pane3" class="pane">
-    <h2 style="color: var(--gold); margin-bottom: 20px;">Top Locks</h2>
+<!-- PANE: Top Locks -->
+
+<div id="pane-locks" class="pane">
+    <div class="section-title">Top Locks</div>
     {% if report.top_locks and report.top_locks|length > 0 %}
         {% for p in report.top_locks %}
         <div class="player-row">
-            <div style="flex:1;">
-                <strong>{{ p.name | default('Player') }}</strong>
-                <span class="target-prop">• {{ p.target_prop | default('PRA') }}</span><br>
-                <span class="stats-breakdown">
-                    PTS {{ p.pts | default(0) }} | REB {{ p.reb | default(0) }} | AST {{ p.ast | default(0) }} | 3PM {{ p.threepm | default(0) }}
-                </span>
+            <div style="flex:1; min-width:0;">
+                <span class="player-name">{{ p.name | default('Player') }}</span>
+                <span class="prop-tag">{{ p.target_prop | default('PRA') }}</span>
+                <div class="stats-line">PTS {{ p.pts | default(0) }} | REB {{ p.reb | default(0) }} | AST {{ p.ast | default(0) }} | 3PM {{ p.threepm | default(0) }}</div>
             </div>
-            <div style="text-align:right;">
-                DVP <strong style="color:var(--green);">{{ p.dvp | default(0) }}</strong>
+            <div style="text-align:right; flex-shrink:0;">
+                DVP <span class="dvp-val">{{ p.dvp | default(0) }}</span>
             </div>
         </div>
         {% endfor %}
     {% else %}
-        <p style="color:var(--muted);">No top locks yet.</p>
+        <p class="empty-msg">No top locks yet.</p>
     {% endif %}
 </div>
 
-<!-- Tab 4: Value Plays -->
-<div id="pane4" class="pane">
-    <h2 style="color: var(--gold); margin-bottom: 20px;">Value Plays</h2>
+<!-- PANE: Value Plays -->
+
+<div id="pane-value" class="pane">
+    <div class="section-title">Value Plays</div>
     {% if report.value_plays and report.value_plays|length > 0 %}
         {% for p in report.value_plays %}
         <div class="player-row">
-            <div style="flex:1;">
-                <strong>{{ p.name | default('Player') }}</strong>
-                <span class="target-prop">• {{ p.target_prop | default('PRA') }}</span><br>
-                <span class="stats-breakdown">
-                    PTS {{ p.pts | default(0) }} | REB {{ p.reb | default(0) }} | AST {{ p.ast | default(0) }} | 3PM {{ p.threepm | default(0) }}
-                </span>
+            <div style="flex:1; min-width:0;">
+                <span class="player-name">{{ p.name | default('Player') }}</span>
+                <span class="prop-tag">{{ p.target_prop | default('PRA') }}</span>
+                <div class="stats-line">PTS {{ p.pts | default(0) }} | REB {{ p.reb | default(0) }} | AST {{ p.ast | default(0) }} | 3PM {{ p.threepm | default(0) }}</div>
             </div>
-            <div style="text-align:right;">
-                DVP <strong style="color:var(--green);">{{ p.dvp | default(0) }}</strong>
+            <div style="text-align:right; flex-shrink:0;">
+                DVP <span class="dvp-val">{{ p.dvp | default(0) }}</span>
             </div>
         </div>
         {% endfor %}
     {% else %}
-        <p style="color:var(--muted);">No value plays yet.</p>
+        <p class="empty-msg">No value plays yet.</p>
     {% endif %}
 </div>
 
-<!-- Tab 5: Slip Builder -->
-<div id="pane5" class="pane">
-    <h2 style="color: var(--gold); margin-bottom: 12px;">Custom Slip Builder</h2>
-    <p style="color:var(--muted); margin-bottom:20px;">Click players to build your own slip (max 5 legs).</p>
+<!-- PANE: Slip Builder -->
 
-    <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;" id="builder-pool">
-        <!-- JS populated -->
-    </div>
+<div id="pane-builder" class="pane">
+    <div class="section-title">Custom Slip Builder</div>
+    <p style="color:var(--muted); font-size:0.85rem; margin-bottom:16px;">Tap players to build your slip (max 5 legs).</p>
 
-    <div class="slip-card">
-        <h3>Your Slip (<span id="slip-count">0</span> legs)</h3>
-        <div id="current-slip" style="min-height:80px;"></div>
-        <div style="margin-top:16px; padding-top:12px; border-top:1px solid var(--border);">
-            <strong>Total Projected:</strong> <span id="total-proj" style="color:var(--gold);">0.0</span><br>
-            <strong>Est. Payout:</strong> <span id="est-payout" style="color:var(--purple2);">—</span>
-        </div>
-        <button onclick="clearSlip()" style="margin-top:12px; background:var(--purple); color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer;">Clear Slip</button>
+```
+<div class="builder-pool" id="builder-pool"></div>
+
+<div class="slip-summary">
+    <h3>Your Slip &nbsp;<span id="slip-count" style="color:var(--muted); font-weight:400;">0 legs</span></h3>
+    <div id="current-slip"><p class="empty-msg">No players selected.</p></div>
+    <div class="slip-meta">
+        Total Projected: <span id="total-proj">0.0</span> &nbsp;•&nbsp;
+        Est. Payout: <span class="payout-val" id="est-payout">—</span>
     </div>
+    <button class="btn-clear" onclick="clearSlip()">Clear Slip</button>
+</div>
+```
+
 </div>
 
+<!-- FOOTER -->
+
 <div class="footer">
-    <a href="/refresh" style="color:var(--purple2);">🔄 Refresh Report</a> &nbsp;•&nbsp; 
-    <a href="/api/report" style="color:var(--purple2);">View Raw JSON</a>
+    <a href="/refresh">🔄 Refresh Report</a> &nbsp;•&nbsp;
+    <a href="/api/report">View Raw JSON</a>
 </div>
 
 <script>
-// Improved tab switching with data-tab attributes
-document.addEventListener('DOMContentLoaded', function() {
-    const tabs = document.querySelectorAll('.tab');
-    const panes = document.querySelectorAll('.pane');
-
-    tabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            const tabIndex = parseInt(this.getAttribute('data-tab'));
-
-            // Remove active from all
-            tabs.forEach(t => t.classList.remove('active'));
-            panes.forEach(p => p.classList.remove('active'));
-
-            // Add active to clicked tab and corresponding pane
-            this.classList.add('active');
-            if (panes[tabIndex]) {
-                panes[tabIndex].classList.add('active');
-            }
+// ── TAB SWITCHING ────────────────────────────────────────────────
+(function () {
+    var tabs = document.querySelectorAll('.tab');
+    tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            // deactivate all
+            tabs.forEach(function (t) { t.classList.remove('active'); });
+            document.querySelectorAll('.pane').forEach(function (p) { p.classList.remove('active'); });
+            // activate clicked
+            tab.classList.add('active');
+            var paneId = tab.getAttribute('data-pane');
+            var pane = document.getElementById(paneId);
+            if (pane) pane.classList.add('active');
         });
     });
+})();
 
-    // Initialize first tab
-    if (tabs[0]) tabs[0].classList.add('active');
-    if (panes[0]) panes[0].classList.add('active');
-});
-
-// Flame animation
-(function() {
-    const canvas = document.getElementById('flameCanvas');
+// ── FLAME CANVAS ─────────────────────────────────────────────────
+(function () {
+    var canvas = document.getElementById('flameCanvas');
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    var ctx = canvas.getContext('2d');
     canvas.width = 360;
     canvas.height = 130;
 
     function animate() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        for (let i = 0; i < 12; i++) {
-            const x = 90 + Math.sin(Date.now() / 300 + i * 0.8) * 55;
-            const alpha = 0.6 + Math.sin(Date.now() / 200 + i) * 0.4;
-            ctx.fillStyle = `rgba(255, 190, 70, ${alpha})`;
+        var t = Date.now();
+        for (var i = 0; i < 12; i++) {
+            var x = 90 + Math.sin(t / 300 + i * 0.8) * 55;
+            var alpha = 0.6 + Math.sin(t / 200 + i) * 0.4;
+            ctx.fillStyle = 'rgba(255,190,70,' + alpha + ')';
             ctx.beginPath();
             ctx.arc(x + i * 18, 95 - i * 4, 14 - i * 0.6, 0, Math.PI * 2);
             ctx.fill();
@@ -384,69 +566,89 @@ document.addEventListener('DOMContentLoaded', function() {
     animate();
 })();
 
-// Slip Builder
-let selectedPlayers = [];
-const reportData = {{ report | tojson | default('{}') }};
+// ── SLIP BUILDER ─────────────────────────────────────────────────
+var reportData = {{ report | tojson | default('{}') }};
+var selectedPlayers = [];
 
 function renderBuilderPool() {
-    const pool = document.getElementById('builder-pool');
+    var pool = document.getElementById('builder-pool');
+    if (!pool) return;
     pool.innerHTML = '';
-    const candidates = [...(reportData.top_locks || []), ...(reportData.value_plays || [])];
 
-    candidates.forEach(p => {
-        const div = document.createElement('div');
-        div.className = 'player-row';
-        div.style.cursor = 'pointer';
-        div.style.width = 'fit-content';
-        div.innerHTML = `
-            <strong>${p.name}</strong> 
-            <span class="target-prop">• ${p.target_prop || 'PRA'}</span>
-            <span style="margin-left:12px; color:var(--green);">${p.dvp || 0} DVP</span>
-        `;
-        div.onclick = () => togglePlayer(p, div);
-        pool.appendChild(div);
+    var candidates = (reportData.top_locks || []).concat(reportData.value_plays || []);
+    // dedupe by name
+    var seen = {};
+    candidates = candidates.filter(function (p) {
+        if (seen[p.name]) return false;
+        seen[p.name] = true;
+        return true;
+    });
+
+    candidates.forEach(function (p) {
+        var chip = document.createElement('div');
+        chip.className = 'builder-chip';
+        chip.innerHTML =
+            '<strong>' + p.name + '</strong>' +
+            ' <span style="color:var(--muted);font-size:0.75rem;">' + (p.target_prop || 'PRA') + ' · ' + (p.dvp || 0) + ' DVP</span>';
+
+        var isSelected = selectedPlayers.some(function (s) { return s.name === p.name; });
+        if (isSelected) chip.classList.add('selected');
+
+        chip.addEventListener('click', function () {
+            togglePlayer(p, chip);
+        });
+        pool.appendChild(chip);
     });
 }
 
-function togglePlayer(player, element) {
-    const exists = selectedPlayers.find(p => p.name === player.name);
-    if (exists) {
-        selectedPlayers = selectedPlayers.filter(p => p.name !== player.name);
-        element.classList.remove('builder-selected');
+function togglePlayer(player, chip) {
+    var idx = selectedPlayers.findIndex(function (p) { return p.name === player.name; });
+    if (idx > -1) {
+        selectedPlayers.splice(idx, 1);
+        chip.classList.remove('selected');
     } else if (selectedPlayers.length < 5) {
         selectedPlayers.push(player);
-        element.classList.add('builder-selected');
+        chip.classList.add('selected');
     }
-    updateCurrentSlip();
+    updateSlipSummary();
 }
 
-function updateCurrentSlip() {
-    const container = document.getElementById('current-slip');
-    container.innerHTML = '';
-    selectedPlayers.forEach(p => {
-        const row = document.createElement('div');
-        row.className = 'player-row';
-        row.innerHTML = `<strong>${p.name}</strong> • ${p.target_prop || 'PRA'} — ${p.proj || 'N/A'} proj`;
-        container.appendChild(row);
-    });
+function updateSlipSummary() {
+    var container = document.getElementById('current-slip');
+    var countEl = document.getElementById('slip-count');
+    var projEl = document.getElementById('total-proj');
+    var payoutEl = document.getElementById('est-payout');
 
-    const totalProj = selectedPlayers.reduce((sum, p) => sum + (parseFloat(p.proj) || 0), 0);
-    document.getElementById('total-proj').textContent = totalProj.toFixed(1);
+    if (selectedPlayers.length === 0) {
+        container.innerHTML = '<p class="empty-msg">No players selected.</p>';
+    } else {
+        container.innerHTML = selectedPlayers.map(function (p) {
+            return '<div class="player-row" style="margin-bottom:6px;">' +
+                '<div style="flex:1;"><span class="player-name">' + p.name + '</span>' +
+                '<span class="prop-tag">' + (p.target_prop || 'PRA') + '</span></div>' +
+                '<div style="text-align:right; color:var(--gold);">' + (p.proj || 'N/A') + ' proj</div>' +
+                '</div>';
+        }).join('');
+    }
 
-    const legCount = selectedPlayers.length;
-    const payouts = {2: 3, 3: 5, 4: 10, 5: 20};
-    const payout = payouts[legCount] || '—';
-    document.getElementById('est-payout').innerHTML = legCount >= 2 ? `<strong>${payout}x</strong>` : '—';
-    document.getElementById('slip-count').textContent = legCount;
+    var total = selectedPlayers.reduce(function (s, p) { return s + (parseFloat(p.proj) || 0); }, 0);
+    projEl.textContent = total.toFixed(1);
+
+    var n = selectedPlayers.length;
+    countEl.textContent = n + (n === 1 ? ' leg' : ' legs');
+
+    var payouts = { 2: '3x', 3: '5x', 4: '10x', 5: '20x' };
+    payoutEl.textContent = payouts[n] || '—';
 }
 
 function clearSlip() {
     selectedPlayers = [];
-    updateCurrentSlip();
+    updateSlipSummary();
     renderBuilderPool();
 }
 
-document.addEventListener('DOMContentLoaded', renderBuilderPool);
+// init builder
+renderBuilderPool();
 </script>
 
 </body>
