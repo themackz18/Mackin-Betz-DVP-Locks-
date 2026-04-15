@@ -335,14 +335,16 @@
 </div>
 
 <script>
-// Fixed tab switching - more robust
+// Fixed and robust tab switching
 function showTab(n) {
-    document.querySelectorAll('.tab').forEach((t, i) => {
-        t.classList.toggle('active', i === n);
-    });
-    document.querySelectorAll('.pane').forEach((p, i) => {
-        p.classList.toggle('active', i === n);
-    });
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+    
+    const tabs = document.querySelectorAll('.tab');
+    const panes = document.querySelectorAll('.pane');
+    
+    if (tabs[n]) tabs[n].classList.add('active');
+    if (panes[n]) panes[n].classList.add('active');
 }
 
 // Flame animation
@@ -430,10 +432,10 @@ function clearSlip() {
     renderBuilderPool();
 }
 
+// Initialize everything
 document.addEventListener('DOMContentLoaded', () => {
     renderBuilderPool();
-    // Make sure first tab is active
-    showTab(0);
+    showTab(0);   // Force first tab active
 });
 </script>
 
