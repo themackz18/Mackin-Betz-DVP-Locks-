@@ -16,7 +16,6 @@ EDGE_DART = 1.5
 
 PAYOUTS = {2: 3, 3: 5, 4: 10, 5: 20}
 
-# Expanded categories for real diversity
 PROP_CATS = ["PTS", "REB", "AST", "STL", "BLK", "PR", "PA", "RA", "PRA", "3PM", "FG_ATT"]
 
 def fetch_projections_csv():
@@ -66,9 +65,10 @@ def best_cat(row):
     cats = {c: float(row.get(c, 0)) for c in PROP_CATS if float(row.get(c, 0)) > 0}
     return max(cats, key=cats.get) if cats else "PRA"
 
-def fmt_player(row):
+def fmt_player(row, category=None):
     grade = "A" if row.get("conf_score", 0) >= EDGE_LOCK else "B" if row.get("conf_score", 0) >= EDGE_LEAN else "C"
     confidence = int(min(95, max(60, row.get("conf_score", 0) * 8)))
+    target = category or best_cat(row)
 
     return {
         "name": str(row.get("Name", "")),
@@ -88,8 +88,9 @@ def fmt_player(row):
         "recent_sim": "—",
         "grade": grade,
         "confidence": confidence,
-        "target_prop": best_cat(row),
-        "best_val": round(float(row.get(best_cat(row), 0)), 1),
+        "target_prop": target,
+        "best_val": round(float(row.get(target, 0)), 1),   # category-specific value
+        "target_display": f"{target} vs DVP {round(float(row.get('DVP', 0)), 1)}"
     }
 
 def detect_games(df):
@@ -113,26 +114,41 @@ def build_same_game_p4s(df, games):
     return results
 
 def build_diverse_slips(df):
-    """Force diversity across categories for better optimization"""
+    """Stronger diversity: group by target_prop and mix categories"""
     slips = {"2": [], "3": [], "4": [], "5": []}
-    high_conf = df[df["conf_score"] >= EDGE_DART].nlargest(20, "conf_score")
+    high_conf = df[df["conf_score"] >= EDGE_DART].nlargest(25, "conf_score")
 
     for size in [2, 3, 4, 5]:
-        used_categories = set()
-        for combo in combinations(high_conf.iterrows(), size):
-            players = [fmt_player(row) for _, row in combo]
-            total_proj = sum(p["proj"] for p in players)
-            target_prop = players[0]["target_prop"]
-            if target_prop not in used_categories or len(slips[str(size)]) < 3:
+        used = set()
+        for cat in PROP_CATS:                     # force one slip per category
+            cat_players = high_conf[high_conf.apply(lambda r: best_cat(r) == cat, axis=1)]
+            if len(cat_players) >= size:
+                for combo in combinations(cat_players.iterrows(), size):
+                    players = [fmt_player(row, cat) for _, row in combo]
+                    total_proj = sum(p["proj"] for p in players)
+                    slips[str(size)].append({
+                        "players": players,
+                        "total_proj": round(total_proj, 1),
+                        "payout": PAYOUTS.get(size, 0),
+                        "target_prop": cat
+                    })
+                    used.add(cat)
+                    if len(slips[str(size)]) >= 8:
+                        break
+            if len(slips[str(size)]) >= 8:
+                break
+        if not slips[str(size)]:                  # fallback
+            for combo in combinations(high_conf.iterrows(), size):
+                players = [fmt_player(row) for _, row in combo]
+                total_proj = sum(p["proj"] for p in players)
                 slips[str(size)].append({
                     "players": players,
                     "total_proj": round(total_proj, 1),
                     "payout": PAYOUTS.get(size, 0),
-                    "target_prop": target_prop
+                    "target_prop": players[0]["target_prop"]
                 })
-                used_categories.add(target_prop)
-            if len(slips[str(size)]) >= 8:
-                break
+                if len(slips[str(size)]) >= 8:
+                    break
     return slips
 
 def build_category_leaders(df):
@@ -141,12 +157,12 @@ def build_category_leaders(df):
         top = df.nlargest(5, cat)
         leaders.append({
             "category": cat,
-            "players": [fmt_player(row) for _, row in top.iterrows()]
+            "players": [fmt_player(row, cat) for _, row in top.iterrows()]
         })
     return leaders
 
 def run_daily_scrape(output_path=REPORT_PATH):
-    logger.info("Starting daily scrape with diverse categories and real stats...")
+    logger.info("Starting daily scrape with forced category diversity...")
 
     df = fetch_projections_csv()
     df = normalize_columns(df)
@@ -157,7 +173,7 @@ def run_daily_scrape(output_path=REPORT_PATH):
         "slate_date": datetime.now().strftime("%Y-%m-%d"),
         "game_count": len(detect_games(df)),
         "same_game_p4": build_same_game_p4s(df, detect_games(df)),
-        "slips": build_diverse_slips(df),           # Now forces different categories
+        "slips": build_diverse_slips(df),
         "category_leaders": build_category_leaders(df),
         "top_locks": [fmt_player(row) for _, row in df[df["conf_score"] >= EDGE_LOCK].nlargest(12, "conf_score").iterrows()],
         "value_plays": [fmt_player(row) for _, row in df[df["conf_score"] >= EDGE_LEAN].nlargest(18, "conf_score").iterrows()],
@@ -167,7 +183,7 @@ def run_daily_scrape(output_path=REPORT_PATH):
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
 
-    logger.info("Report saved with diverse slips and real category stats")
+    logger.info("Report saved with diverse slips + correct category stats")
     return report
 
 if __name__ == "__main__":
