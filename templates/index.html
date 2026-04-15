@@ -127,29 +127,11 @@
             align-items: center;
         }
 
-        .edge {
-            font-size: 0.75rem;
-            padding: 2px 8px;
-            border-radius: 9999px;
-            font-weight: 700;
-        }
-        .edge-strong { background: rgba(16,185,129,0.2); color: var(--green); }
-        .edge-lean { background: rgba(245,197,24,0.2); color: var(--gold); }
-
         .footer {
             text-align: center;
             padding: 40px 20px 30px;
             color: var(--muted);
             font-size: 0.8rem;
-        }
-
-        .insight {
-            background: rgba(124,58,237,0.1);
-            border: 1px solid var(--purple);
-            border-radius: 8px;
-            padding: 12px;
-            font-size: 0.85rem;
-            margin: 12px 0;
         }
     </style>
 </head>
@@ -190,14 +172,12 @@
                 <div class="player-row">
                     <div style="flex:1;">
                         <strong>{{ p.name | default('Player') }}</strong><br>
-                        <span style="color:var(--muted);">{{ p.team | default('') }} vs {{ p.opp | default('') }}</span><br>
-                        <small>H2H: {{ p.h2h | default('—') }} • Recent vs similar: {{ p.recent_sim | default('—') }}</small>
+                        <span style="color:var(--muted);">{{ p.team | default('') }} vs {{ p.opp | default('') }}</span>
                     </div>
                     <div style="text-align:right;">
                         DVP <strong style="color:var(--green);">{{ p.dvp | default(0) }}</strong><br>
                         Proj <strong>{{ p.proj | default('N/A') }}</strong><br>
-                        Value <strong style="color:var(--gold2);">{{ p.val | default('N/A') }}</strong><br>
-                        <span class="edge edge-strong">Matchup Grade: {{ p.grade | default('B') }} ({{ p.confidence | default(75) }}%)</span>
+                        Value <strong style="color:var(--gold2);">{{ p.val | default('N/A') }}</strong>
                     </div>
                 </div>
                 {% endfor %}
@@ -205,21 +185,21 @@
         </div>
         {% endfor %}
     {% else %}
-        <p style="color:var(--muted);">No P4 data yet.</p>
+        <p style="color:var(--muted);">No P4 data yet. Click Refresh Report.</p>
     {% endif %}
 </div>
 
-<!-- Tab 1: Recommended Slips -->
+<!-- Tab 1: Slips -->
 <div id="pane1" class="pane">
     <h2 style="color: var(--gold); margin-bottom: 20px;">Recommended Slips</h2>
     {% if report.slips %}
         {% for size in ['2','3','4','5'] %}
-            {% set slip_list = report.slips[size] %}
-            {% if slip_list and slip_list | length > 0 %}
+            {% set slip_list = report.slips.get(size, []) %}
+            {% if slip_list %}
             <h3 style="color:var(--purple2); margin:20px 0 10px;">{{ size }}-Leg Slips</h3>
             {% for slip in slip_list %}
             <div class="slip-card">
-                <strong>Total Proj: {{ slip.total_proj | default('N/A') }}</strong> — Target: <span style="color:var(--green);">{{ slip.target_prop | default('PRA') }}</span>
+                <strong>Total Proj: {{ slip.total_proj | default('N/A') }}</strong>
                 {% for p in slip.players %}
                 <div class="player-row">
                     <div><strong>{{ p.name | default('Player') }}</strong></div>
@@ -264,8 +244,7 @@
             <strong>{{ p.name | default('Player') }}</strong> ({{ p.team | default('') }} vs {{ p.opp | default('') }})<br>
             DVP <strong style="color:var(--green);">{{ p.dvp | default(0) }}</strong> • 
             Proj <strong>{{ p.proj | default('N/A') }}</strong> • 
-            Value <strong style="color:var(--gold2);">{{ p.val | default('N/A') }}</strong><br>
-            <span class="edge edge-strong">H2H: {{ p.h2h | default('—') }} • Recent: {{ p.recent_sim | default('—') }}</span>
+            Value <strong style="color:var(--gold2);">{{ p.val | default('N/A') }}</strong>
         </div>
         {% endfor %}
     {% else %}
@@ -290,10 +269,10 @@
     {% endif %}
 </div>
 
-<!-- Tab 5: Interactive Slip Builder -->
+<!-- Tab 5: Slip Builder -->
 <div id="pane5" class="pane">
     <h2 style="color: var(--gold); margin-bottom: 12px;">Custom Slip Builder</h2>
-    <p style="color:var(--muted); margin-bottom:20px;">Click players to build your own slip (max 5 legs). Live projection + payout shown.</p>
+    <p style="color:var(--muted); margin-bottom:20px;">Click players to build your own slip (max 5 legs).</p>
 
     <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;" id="builder-pool">
         <!-- Populated by JS -->
@@ -308,10 +287,6 @@
         </div>
         <button onclick="clearSlip()" style="margin-top:12px; background:var(--purple); color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer;">Clear Slip</button>
     </div>
-
-    <div class="insight">
-        <strong>Pro Tip:</strong> Use "Alpha Only" mode (top locks + value plays) for highest ROI. Quality over quantity = better long-term results on PrizePicks / Underdog.
-    </div>
 </div>
 
 <div class="footer">
@@ -320,12 +295,13 @@
 </div>
 
 <script>
-// Tab switching, flame animation, and Slip Builder (same as previous version)
+// Tab switching
 function showTab(n) {
     document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === n));
     document.querySelectorAll('.pane').forEach((p, i) => p.classList.toggle('active', i === n));
 }
 
+// Flame animation
 (function() {
     const canvas = document.getElementById('flameCanvas');
     if (!canvas) return;
@@ -348,6 +324,7 @@ function showTab(n) {
     animate();
 })();
 
+// Simple Slip Builder
 let selectedPlayers = [];
 const reportData = {{ report | tojson }};
 
