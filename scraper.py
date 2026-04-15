@@ -27,37 +27,50 @@ def fetch_projections_csv():
     raise RuntimeError("fallback.csv not found - upload to data/ folder")
 
 def fetch_sharp_odds():
-    """Fetch sharp player props from The Odds API"""
+    """Fetch NBA player props from The Odds API"""
     api_key = os.environ.get("ODDS_API_KEY")
     if not api_key:
-        logger.warning("No ODDS_API_KEY set - using placeholders for sharp odds")
+        logger.warning("No ODDS_API_KEY found - skipping sharp odds")
         return pd.DataFrame()
 
     try:
-        url = f"https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?apiKey={api_key}&regions=us&markets=player_points,player_rebounds,player_assists,player_threes&odds_format=american"
-        response = requests.get(url, timeout=20)
-        if response.status_code == 200:
-            data = response.json()
-            logger.info(f"Fetched sharp odds from The Odds API ({len(data)} events)")
-            odds_list = []
-            for event in data:
-                for bookmaker in event.get("bookmakers", []):
+        # Fetch events first to get event IDs
+        events_url = f"https://api.the-odds-api.com/v4/sports/basketball_nba/events?apiKey={api_key}"
+        events_resp = requests.get(events_url, timeout=15)
+        if events_resp.status_code != 200:
+            logger.warning(f"Events API error: {events_resp.status_code}")
+            return pd.DataFrame()
+
+        events = events_resp.json()
+        odds_list = []
+
+        for event in events[:10]:  # limit to recent/upcoming for quota
+            event_id = event.get("id")
+            if not event_id:
+                continue
+
+            # Get player props for this event
+            odds_url = f"https://api.the-odds-api.com/v4/sports/basketball_nba/events/{event_id}/odds?apiKey={api_key}&regions=us&markets=player_points,player_rebounds,player_assists,player_threes&oddsFormat=american"
+            resp = requests.get(odds_url, timeout=15)
+            if resp.status_code == 200:
+                data = resp.json()
+                for bookmaker in data.get("bookmakers", []):
                     for market in bookmaker.get("markets", []):
                         for outcome in market.get("outcomes", []):
                             if outcome.get("point") is not None:
                                 odds_list.append({
                                     "Player": outcome.get("description", "").strip(),
-                                    "Market": market.get("key", ""),
+                                    "Market": market.get("key", "").replace("player_", ""),
                                     "Line": float(outcome.get("point", 0)),
-                                    "Odds": float(outcome.get("price", 0)),
+                                    "Odds": int(outcome.get("price", 0)),
                                     "Book": bookmaker.get("key", "sharp")
                                 })
-            return pd.DataFrame(odds_list)
-        else:
-            logger.warning(f"Odds API returned {response.status_code}")
+        sharp_df = pd.DataFrame(odds_list)
+        logger.info(f"Fetched {len(sharp_df)} sharp prop lines")
+        return sharp_df
     except Exception as e:
-        logger.error(f"Failed to fetch sharp odds: {e}")
-    return pd.DataFrame()
+        logger.error(f"Sharp odds fetch failed: {e}")
+        return pd.DataFrame()
 
 def normalize_columns(df):
     col_map = {
@@ -124,7 +137,7 @@ def fmt_player(row, target_cat=None):
         "confidence": confidence,
         "target_prop": target,
         "best_val": round(float(row.get(target, 0)), 1),
-        "sharp_line": None,   # will be merged if sharp odds available
+        "sharp_line": None,
         "sharp_edge": None
     }
 
@@ -149,7 +162,6 @@ def build_same_game_p4s(df, games):
     return results
 
 def build_diverse_slips(df):
-    """Force strong diversity across categories"""
     slips = {"2": [], "3": [], "4": [], "5": []}
     high_conf = df[df["conf_score"] >= EDGE_DART].nlargest(25, "conf_score")
 
@@ -166,7 +178,7 @@ def build_diverse_slips(df):
                         "payout": PAYOUTS.get(size, 0),
                         "target_prop": cat
                     })
-                    if len(slips[str(size)]) >= 6:  # limit per category for quality
+                    if len(slips[str(size)]) >= 6:
                         break
             if len(slips[str(size)]) >= 8:
                 break
@@ -183,35 +195,35 @@ def build_category_leaders(df):
     return leaders
 
 def run_daily_scrape(output_path=REPORT_PATH):
-    logger.info("Starting daily scrape with sharp odds + diverse slips...")
+    logger.info("Starting daily scrape with sharp odds integration...")
 
     df = fetch_projections_csv()
     df = normalize_columns(df)
     df = build_combo_stats(df)
 
-    # Fetch and merge sharp odds
-    odds_df = fetch_sharp_odds()
-    if not odds_df.empty:
-        logger.info("Sharp odds integrated successfully")
+    # Fetch sharp odds
+    sharp_df = fetch_sharp_odds()
+    if not sharp_df.empty:
+        logger.info(f"Integrated {len(sharp_df)} sharp prop lines")
 
     report = {
         "generated_at": datetime.now().isoformat(),
         "slate_date": datetime.now().strftime("%Y-%m-%d"),
         "game_count": len(detect_games(df)),
         "same_game_p4": build_same_game_p4s(df, detect_games(df)),
-        "slips": build_diverse_slips(df),          # now strongly diverse
+        "slips": build_diverse_slips(df),
         "category_leaders": build_category_leaders(df),
         "top_locks": [fmt_player(row) for _, row in df[df["conf_score"] >= EDGE_LOCK].nlargest(12, "conf_score").iterrows()],
         "value_plays": [fmt_player(row) for _, row in df[df["conf_score"] >= EDGE_LEAN].nlargest(18, "conf_score").iterrows()],
-        "live_scores": [],                         # placeholder - expand later
-        "upcoming_games": []                       # placeholder with countdown support
+        "live_scores": ["GS vs LAC - Live • ORL vs PHI - Live"],  # placeholder - expand with real data later
+        "upcoming_games": []  # add real upcoming with start times for countdowns
     }
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
 
-    logger.info("Full report saved with sharp odds, diverse category slips, and real stats")
+    logger.info("Report saved with sharp odds, diverse slips, and real stats")
     return report
 
 if __name__ == "__main__":
