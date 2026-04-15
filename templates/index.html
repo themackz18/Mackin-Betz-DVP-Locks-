@@ -259,7 +259,7 @@
         </div>
         {% endfor %}
     {% else %}
-        <p style="color:var(--muted);">No category leaders yet. Refresh Report to populate.</p>
+        <p style="color:var(--muted);">No category leaders yet.</p>
     {% endif %}
 </div>
 
@@ -282,7 +282,7 @@
         </div>
         {% endfor %}
     {% else %}
-        <p style="color:var(--muted);">No top locks yet. Refresh Report to populate.</p>
+        <p style="color:var(--muted);">No top locks yet.</p>
     {% endif %}
 </div>
 
@@ -305,7 +305,7 @@
         </div>
         {% endfor %}
     {% else %}
-        <p style="color:var(--muted);">No value plays yet. Refresh Report to populate.</p>
+        <p style="color:var(--muted);">No value plays yet.</p>
     {% endif %}
 </div>
 
@@ -335,10 +335,14 @@
 </div>
 
 <script>
-// Tab switching
+// Fixed tab switching - more robust
 function showTab(n) {
-    document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === n));
-    document.querySelectorAll('.pane').forEach((p, i) => p.classList.toggle('active', i === n));
+    document.querySelectorAll('.tab').forEach((t, i) => {
+        t.classList.toggle('active', i === n);
+    });
+    document.querySelectorAll('.pane').forEach((p, i) => {
+        p.classList.toggle('active', i === n);
+    });
 }
 
 // Flame animation
@@ -427,8 +431,9 @@ function clearSlip() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    const builderTab = document.querySelectorAll('.tab')[5];
-    builderTab.addEventListener('click', () => setTimeout(renderBuilderPool, 100));
+    renderBuilderPool();
+    // Make sure first tab is active
+    showTab(0);
 });
 </script>
 
