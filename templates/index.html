@@ -127,15 +127,6 @@
             align-items: center;
         }
 
-        .edge {
-            font-size: 0.75rem;
-            padding: 2px 8px;
-            border-radius: 9999px;
-            font-weight: 700;
-        }
-        .edge-strong { background: rgba(16,185,129,0.2); color: var(--green); }
-        .edge-lean { background: rgba(245,197,24,0.2); color: var(--gold); }
-
         .footer {
             text-align: center;
             padding: 40px 20px 30px;
@@ -198,14 +189,15 @@
     {% endif %}
 </div>
 
-<!-- Tab 1: Slips (from your report.slips) -->
+<!-- Tab 1: Slips -->
 <div id="pane1" class="pane">
     <h2 style="color: var(--gold); margin-bottom: 20px;">Recommended Slips</h2>
     {% if report.slips %}
         {% for size in ['2','3','4','5'] %}
-            {% if report.slips[size] and report.slips[size].length > 0 %}
+            {% set slip_list = report.slips[size] %}
+            {% if slip_list and slip_list | length > 0 %}
             <h3 style="color:var(--purple2); margin:20px 0 10px;">{{ size }}-Leg Slips</h3>
-            {% for slip in report.slips[size] %}
+            {% for slip in slip_list %}
             <div class="slip-card">
                 <strong>Total Proj: {{ slip.total_proj | default('N/A') }}</strong>
                 {% for p in slip.players %}
