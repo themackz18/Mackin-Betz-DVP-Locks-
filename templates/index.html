@@ -127,6 +127,15 @@
             align-items: center;
         }
 
+        .edge {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-weight: 700;
+        }
+        .edge-strong { background: rgba(16,185,129,0.2); color: var(--green); }
+        .edge-lean { background: rgba(245,197,24,0.2); color: var(--gold); }
+
         .footer {
             text-align: center;
             padding: 40px 20px 30px;
@@ -189,7 +198,7 @@
     {% endif %}
 </div>
 
-<!-- Tab 1: Slips -->
+<!-- Tab 1: Recommended Slips -->
 <div id="pane1" class="pane">
     <h2 style="color: var(--gold); margin-bottom: 20px;">Recommended Slips</h2>
     {% if report.slips %}
@@ -272,10 +281,10 @@
 <!-- Tab 5: Interactive Slip Builder -->
 <div id="pane5" class="pane">
     <h2 style="color: var(--gold); margin-bottom: 12px;">Custom Slip Builder</h2>
-    <p style="color:var(--muted); margin-bottom:20px;">Click any player to add to your slip (max 5 legs). Live projection + payout shown.</p>
+    <p style="color:var(--muted); margin-bottom:20px;">Click players to build your own slip (max 5 legs). Live total + payout shown.</p>
 
     <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;" id="builder-pool">
-        <!-- Populated by JavaScript -->
+        <!-- Populated by JS -->
     </div>
 
     <div class="slip-card">
