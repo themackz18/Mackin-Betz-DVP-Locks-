@@ -127,6 +127,12 @@
             align-items: center;
         }
 
+        .target-prop {
+            color: var(--purple2);
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
         .footer {
             text-align: center;
             padding: 40px 20px 30px;
@@ -185,25 +191,31 @@
         </div>
         {% endfor %}
     {% else %}
-        <p style="color:var(--muted);">No P4 data yet. Click Refresh Report after ensuring fallback.csv is present.</p>
+        <p style="color:var(--muted);">No P4 data yet.</p>
     {% endif %}
 </div>
 
-<!-- Tab 1: Slips -->
+<!-- Tab 1: Slips (Improved with target_prop) -->
 <div id="pane1" class="pane">
     <h2 style="color: var(--gold); margin-bottom: 20px;">Recommended Slips</h2>
     {% if report.slips %}
         {% for size in ['2','3','4','5'] %}
             {% set slip_list = report.slips.get(size, []) %}
             {% if slip_list %}
-            <h3 style="color:var(--purple2);">{{ size }}-Leg Slips</h3>
+            <h3 style="color:var(--purple2); margin:20px 0 10px;">{{ size }}-Leg Slips</h3>
             {% for slip in slip_list %}
             <div class="slip-card">
-                <strong>Total Proj: {{ slip.total_proj | default('N/A') }}</strong>
+                <strong>Total Proj: {{ slip.total_proj | default('N/A') }} • Target: {{ slip.target_prop | default('PRA') }}</strong>
                 {% for p in slip.players %}
                 <div class="player-row">
-                    <div><strong>{{ p.name | default('Player') }}</strong></div>
-                    <div>DVP <strong style="color:var(--green);">{{ p.dvp | default(0) }}</strong></div>
+                    <div style="flex:1;">
+                        <strong>{{ p.name | default('Player') }}</strong>
+                        <span class="target-prop"> • {{ p.target_prop | default('PRA') }}</span>
+                    </div>
+                    <div style="text-align:right;">
+                        DVP <strong style="color:var(--green);">{{ p.dvp | default(0) }}</strong><br>
+                        3PTM <strong>{{ p.threepm | default('N/A') }}</strong>
+                    </div>
                 </div>
                 {% endfor %}
             </div>
@@ -215,7 +227,7 @@
     {% endif %}
 </div>
 
-<!-- Tab 2: Category Leaders -->
+<!-- Other tabs (simplified for now) -->
 <div id="pane2" class="pane">
     <h2 style="color: var(--gold); margin-bottom: 20px;">Category Leaders</h2>
     {% if report.category_leaders %}
@@ -224,7 +236,7 @@
             <h3 style="color:var(--purple2);">{{ cat.category | default('Category') }}</h3>
             {% for p in cat.players %}
             <div class="player-row">
-                <div><strong>{{ p.name | default('Player') }}</strong></div>
+                <div><strong>{{ p.name | default('Player') }}</strong> • {{ p.target_prop | default('PRA') }}</div>
                 <div style="color:var(--gold);">{{ p.best_val | default('N/A') }}</div>
             </div>
             {% endfor %}
@@ -235,16 +247,13 @@
     {% endif %}
 </div>
 
-<!-- Tab 3: Top Locks -->
 <div id="pane3" class="pane">
     <h2 style="color: var(--gold); margin-bottom: 20px;">Top Locks</h2>
     {% if report.top_locks %}
         {% for p in report.top_locks %}
-        <div class="lock-card">
-            <strong>{{ p.name | default('Player') }}</strong> ({{ p.team | default('') }} vs {{ p.opp | default('') }})<br>
-            DVP <strong style="color:var(--green);">{{ p.dvp | default(0) }}</strong> • 
-            Proj <strong>{{ p.proj | default('N/A') }}</strong> • 
-            Value <strong style="color:var(--gold2);">{{ p.val | default('N/A') }}</strong>
+        <div class="player-row">
+            <div><strong>{{ p.name | default('Player') }}</strong> • {{ p.target_prop | default('PRA') }}</div>
+            <div>DVP <strong style="color:var(--green);">{{ p.dvp | default(0) }}</strong></div>
         </div>
         {% endfor %}
     {% else %}
@@ -252,16 +261,13 @@
     {% endif %}
 </div>
 
-<!-- Tab 4: Value Plays -->
 <div id="pane4" class="pane">
     <h2 style="color: var(--gold); margin-bottom: 20px;">Value Plays</h2>
     {% if report.value_plays %}
         {% for p in report.value_plays %}
-        <div class="value-card">
-            <strong>{{ p.name | default('Player') }}</strong> ({{ p.team | default('') }})<br>
-            DVP <strong style="color:var(--green);">{{ p.dvp | default(0) }}</strong> • 
-            Proj <strong>{{ p.proj | default('N/A') }}</strong> • 
-            Value <strong style="color:var(--gold2);">{{ p.val | default('N/A') }}</strong>
+        <div class="player-row">
+            <div><strong>{{ p.name | default('Player') }}</strong> • {{ p.target_prop | default('PRA') }}</div>
+            <div>DVP <strong style="color:var(--green);">{{ p.dvp | default(0) }}</strong></div>
         </div>
         {% endfor %}
     {% else %}
@@ -272,7 +278,7 @@
 <!-- Tab 5: Slip Builder -->
 <div id="pane5" class="pane">
     <h2 style="color: var(--gold); margin-bottom: 12px;">Custom Slip Builder</h2>
-    <p style="color:var(--muted); margin-bottom:20px;">Click players below to build your own slip (max 5 legs).</p>
+    <p style="color:var(--muted); margin-bottom:20px;">Click players to build your own slip (max 5 legs).</p>
 
     <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;" id="builder-pool">
         <!-- JS populated -->
@@ -295,13 +301,12 @@
 </div>
 
 <script>
-// Tab switching
+// Tab switching, flame animation, and Slip Builder JS (unchanged from previous)
 function showTab(n) {
     document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === n));
     document.querySelectorAll('.pane').forEach((p, i) => p.classList.toggle('active', i === n));
 }
 
-// Flame animation
 (function() {
     const canvas = document.getElementById('flameCanvas');
     if (!canvas) return;
@@ -324,7 +329,6 @@ function showTab(n) {
     animate();
 })();
 
-// Slip Builder
 let selectedPlayers = [];
 const reportData = {{ report | tojson }};
 
@@ -340,8 +344,8 @@ function renderBuilderPool() {
         div.style.width = 'fit-content';
         div.innerHTML = `
             <strong>${p.name}</strong> 
+            <span style="margin-left:12px; color:var(--purple2);">• ${p.target_prop || 'PRA'}</span>
             <span style="margin-left:12px; color:var(--green);">${p.dvp || 0} DVP</span>
-            <span style="margin-left:12px;">${p.proj || 'N/A'} proj</span>
         `;
         div.onclick = () => togglePlayer(p, div);
         pool.appendChild(div);
@@ -366,7 +370,7 @@ function updateCurrentSlip() {
     selectedPlayers.forEach(p => {
         const row = document.createElement('div');
         row.className = 'player-row';
-        row.innerHTML = `<strong>${p.name}</strong> — ${p.proj || 'N/A'} proj`;
+        row.innerHTML = `<strong>${p.name}</strong> • ${p.target_prop || 'PRA'} — ${p.proj || 'N/A'} proj`;
         container.appendChild(row);
     });
 
@@ -388,9 +392,7 @@ function clearSlip() {
 
 document.addEventListener('DOMContentLoaded', () => {
     const builderTab = document.querySelectorAll('.tab')[5];
-    builderTab.addEventListener('click', () => {
-        setTimeout(renderBuilderPool, 100);
-    });
+    builderTab.addEventListener('click', () => setTimeout(renderBuilderPool, 100));
 });
 </script>
 
