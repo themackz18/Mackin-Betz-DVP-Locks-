@@ -164,3 +164,54 @@
 
 <!-- Tab 0: Same Game P4s -->
 <div id="pane0" class="pane active">
+    <h2 style="color: var(--gold); margin-bottom: 20px;">Same-Game Power4s</h2>
+    {% if report.same_game_p4 %}
+        {% for game in report.same_game_p4 %}
+        <div class="game-card">
+            <div style="font-weight:700; color:var(--gold); font-size:1.1rem; margin-bottom:12px;">
+                {{ game.game | default('Game') }}
+            </div>
+            {% if game.alpha %}
+                {% for p in game.alpha %}
+                <div class="player-row">
+                    <div>
+                        <strong>{{ p.name | default('Player') }}</strong><br>
+                        <span style="color:var(--muted); font-size:0.85rem;">{{ p.team | default('') }} vs {{ p.opp | default('') }}</span>
+                    </div>
+                    <div style="text-align:right; min-width:90px;">
+                        <span style="color:var(--green); font-weight:700;">{{ p.dvp | default(0) }} DVP</span><br>
+                        <span style="color:var(--gold);">{{ p.proj | default('N/A') }} proj</span>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div style="text-align:center; padding:60px; color:var(--muted);">
+            No P4 data yet. Click Refresh Report.
+        </div>
+    {% endif %}
+</div>
+
+<!-- Placeholder tabs -->
+<div id="pane1" class="pane"><h2 style="color:var(--gold);">Prop Slips</h2><p style="color:var(--muted);">2/3/4/5-leg parlays will appear here soon.</p></div>
+<div id="pane2" class="pane"><h2 style="color:var(--gold);">Category Leaders</h2><p style="color:var(--muted);">PTS / REB / AST leaders will appear here soon.</p></div>
+<div id="pane3" class="pane"><h2 style="color:var(--gold);">Top Locks</h2><p style="color:var(--muted);">High-confidence locks will appear here soon.</p></div>
+<div id="pane4" class="pane"><h2 style="color:var(--gold);">Value Plays</h2><p style="color:var(--muted);">Undervalued edges will appear here soon.</p></div>
+
+<div class="footer">
+    <a href="/refresh" style="color:var(--purple2);">🔄 Refresh Report</a> &nbsp;•&nbsp; 
+    <a href="/api/report" style="color:var(--purple2);">View Raw JSON</a>
+</div>
+
+<script>
+function showTab(n) {
+    document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === n));
+    document.querySelectorAll('.pane').forEach((p, i) => p.classList.toggle('active', i === n));
+}
+
+// Lightweight flame animation
+(function() {
+    const canvas = document.getElementById('flameCanvas');
+    if (!canvas
