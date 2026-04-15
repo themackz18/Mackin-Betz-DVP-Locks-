@@ -16,7 +16,6 @@ EDGE_DART = 1.5
 
 PAYOUTS = {2: 3, 3: 5, 4: 10, 5: 20}
 
-# Expanded categories for diverse slips
 PROP_CATS = ["PTS", "REB", "AST", "STL", "BLK", "PR", "PA", "RA", "PRA", "3PM", "FG_ATT"]
 
 def fetch_projections_csv():
@@ -39,29 +38,27 @@ def normalize_columns(df):
     }
     df = df.rename(columns={k: v for k, v in col_map.items() if k in df.columns})
 
-    # Ensure real stat columns exist
+    # Ensure all real stat columns exist
     for col in ["DVP", "Projection", "Value", "MINS", "PTS", "AST", "REB", "STL", "BLK", "3PM", "FG_ATT"]:
         if col not in df.columns:
             df[col] = 0.0
 
-    numeric_cols = ["DVP", "Projection", "Value", "MINS", "PTS", "AST", "REB", "STL", "BLK", "3PM", "FG_ATT"]
-    for col in numeric_cols:
+    numeric = ["DVP", "Projection", "Value", "MINS", "PTS", "AST", "REB", "STL", "BLK", "3PM", "FG_ATT"]
+    for col in numeric:
         df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
 
     return df
 
 def build_combo_stats(df):
-    # Build real combined stats
     df["PR"] = df["PTS"] + df["REB"]
     df["PA"] = df["PTS"] + df["AST"]
     df["RA"] = df["REB"] + df["AST"]
     df["PRA"] = df["PTS"] + df["REB"] + df["AST"]
 
-    # Normalize DVP and calculate confidence/edge
     dvp_max = df["DVP"].max() if df["DVP"].max() > 0 else 30
     df["DVP_norm"] = df["DVP"] / dvp_max
     val = df["Value"].where(df["Value"] > 0, 5.0)
-    df["conf_score"] = (df["Projection"] * df["DVP_norm"] * (val / 5.0)).clip(upper=12)
+    df["conf_score"] = df["Projection"] * df["DVP_norm"] * (val / 5.0)
 
     return df
 
@@ -80,15 +77,21 @@ def fmt_player(row):
         "dvp": round(float(row.get("DVP", 0)), 1),
         "proj": round(float(row.get("Projection", 0)), 1),
         "val": round(float(row.get("Value", 0)), 1),
-        "threepm": round(float(row.get("3PM", 0)), 1),      # real 3PM made
+        "pts": round(float(row.get("PTS", 0)), 1),
+        "reb": round(float(row.get("REB", 0)), 1),
+        "ast": round(float(row.get("AST", 0)), 1),
+        "stl": round(float(row.get("STL", 0)), 1),
+        "blk": round(float(row.get("BLK", 0)), 1),
+        "threepm": round(float(row.get("3PM", 0)), 1),
         "threepm_avg": round(float(row.get("3PM", 0)), 1),
-        "threepm_att": round(float(row.get("FG_ATT", 0)) * 0.35, 1),  # rough attempt estimate if not direct
-        "h2h": "—",          # Expand later with real data
-        "recent_sim": "—",   # Expand later
+        "threepm_att": round(float(row.get("FG_ATT", 0)) * 0.35, 1),  # rough attempt estimate
+        "fg_att": round(float(row.get("FG_ATT", 0)), 1),
+        "h2h": "—",
+        "recent_sim": "—",
         "grade": grade,
         "confidence": confidence,
         "target_prop": best_cat(row),
-        "best_val": round(float(row.get(best_cat(row), 0)), 1)
+        "best_val": round(float(row.get(best_cat(row), 0)), 1),
     }
 
 def detect_games(df):
@@ -112,7 +115,6 @@ def build_same_game_p4s(df, games):
     return results
 
 def build_diverse_slips(df):
-    """Build slips focused on different prop categories for better optimization"""
     slips = {"2": [], "3": [], "4": [], "5": []}
     high_conf = df[df["conf_score"] >= EDGE_DART].nlargest(15, "conf_score")
 
@@ -127,13 +129,13 @@ def build_diverse_slips(df):
                 "payout": PAYOUTS.get(size, 0),
                 "target_prop": target_prop
             })
-        slips[str(size)] = slips[str(size)][:6]  # Limit to top 6 per size for quality
+        slips[str(size)] = slips[str(size)][:8]
     return slips
 
 def build_category_leaders(df):
     leaders = []
     for cat in ["PTS", "REB", "AST", "PRA", "3PM", "STL", "BLK"]:
-        top = df.nlargest(6, cat)
+        top = df.nlargest(5, cat)
         leaders.append({
             "category": cat,
             "players": [fmt_player(row) for _, row in top.iterrows()]
@@ -141,7 +143,7 @@ def build_category_leaders(df):
     return leaders
 
 def run_daily_scrape(output_path=REPORT_PATH):
-    logger.info("Starting daily scrape with diverse categories...")
+    logger.info("Starting daily scrape with real stats and diverse categories...")
 
     df = fetch_projections_csv()
     df = normalize_columns(df)
@@ -152,7 +154,7 @@ def run_daily_scrape(output_path=REPORT_PATH):
         "slate_date": datetime.now().strftime("%Y-%m-%d"),
         "game_count": len(detect_games(df)),
         "same_game_p4": build_same_game_p4s(df, detect_games(df)),
-        "slips": build_diverse_slips(df),          # Now truly diverse
+        "slips": build_diverse_slips(df),
         "category_leaders": build_category_leaders(df),
         "top_locks": [fmt_player(row) for _, row in df[df["conf_score"] >= EDGE_LOCK].nlargest(12, "conf_score").iterrows()],
         "value_plays": [fmt_player(row) for _, row in df[df["conf_score"] >= EDGE_LEAN].nlargest(18, "conf_score").iterrows()],
@@ -162,7 +164,7 @@ def run_daily_scrape(output_path=REPORT_PATH):
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
 
-    logger.info("Report saved with real stats, 3PTM, and category-diverse slips")
+    logger.info("Report saved with real stats (PTS, REB, AST, 3PM, FG_ATT) and diverse slips")
     return report
 
 if __name__ == "__main__":
