@@ -31,29 +31,38 @@ PAYOUTS = {
 # ================================
 
 def fetch_prizepicks():
+    """Fetch projections from PrizePicks API"""
     url = "https://api.prizepicks.com/projections?league_id=7&per_page=250&single_stat=true"
-    resp = requests.get(url, timeout=15)
-    data = resp.json()
+    try:
+        resp = requests.get(url, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
 
-    players = {}
-    id_map = {}
+        players = {}
+        id_map = {}
 
-    for i in data["included"]:
-        if i["type"] == "new_player":
-            id_map[i["id"]] = i["attributes"]["name"]
+        for i in data.get("included", []):
+            if i.get("type") == "new_player":
+                id_map[i["id"]] = i["attributes"]["name"]
 
-    for p in data["data"]:
-        attr = p["attributes"]
-        pid  = p["relationships"]["new_player"]["data"]["id"]
+        for p in data.get("data", []):
+            attr = p["attributes"]
+            pid = p["relationships"]["new_player"]["data"]["id"]
 
-        name = id_map.get(pid)
-        stat = attr["stat_type"].upper().replace(" ", "_")
-        line = attr["line_score"]
+            name = id_map.get(pid)
+            stat = attr["stat_type"].upper().replace(" ", "_")
+            line = attr["line_score"]
 
-        if name:
-            players.setdefault(name, {})[stat] = float(line)
+            if name:
+                players.setdefault(name, {})[stat] = float(line)
 
-    return players
+        logger.info(f"Fetched PrizePicks data for {len(players)} players")
+        return players
+
+    except Exception as e:
+        logger.error(f"Failed to fetch PrizePicks data: {e}")
+        return {}
+
 
 # ================================
 # MONTE CARLO
@@ -62,6 +71,7 @@ def fetch_prizepicks():
 def simulate_hit_rate(proj, line, std):
     sims = np.random.normal(proj, std, SIM_RUNS)
     return np.mean(sims > line)
+
 
 # ================================
 # LAST 5 FORM (CSV BASED)
@@ -77,6 +87,7 @@ def apply_last5_boost(row):
     ratio = l5 / season
     return min(max(ratio, 0.8), 1.2)  # clamp boost
 
+
 # ================================
 # DVP BOOST
 # ================================
@@ -90,6 +101,7 @@ def dvp_boost(dvp_rank):
     elif dvp_rank <= 10:
         return 0.90
     return 1.0
+
 
 # ================================
 # BUILD PLAYERS
@@ -145,6 +157,7 @@ def build_players(df, lines):
 
     return players
 
+
 # ================================
 # RANKING
 # ================================
@@ -154,6 +167,7 @@ def rank_props(players):
     unders = sorted(players, key=lambda x: x["edge"])
 
     return overs[:10], unders[:10]
+
 
 # ================================
 # SLIP BUILDER
@@ -176,12 +190,13 @@ def build_slips(players, size):
         ev = prob * payout
 
         slips.append({
-            "players": combo,
+            "players": [p["name"] for p in combo],  # Store names only for cleaner JSON
             "win_prob": round(prob * 100, 2),
             "ev": round(ev, 2)
         })
 
     return sorted(slips, key=lambda x: x["ev"], reverse=True)[:5]
+
 
 # ================================
 # CHEAT SHEET IMAGE
@@ -219,44 +234,76 @@ def create_cheatsheet(top_over, top_under):
         draw.text((50, y), text, fill=(255,100,100), font=font)
         y += 40
 
-    img.save(OUTPUT_IMG)
-
-# ================================
-# MAIN
-# ================================
-
-def run_daily():
-    df = pd.read_csv(FALLBACK_CSV)
-
-    lines = fetch_prizepicks()
-
-    players = build_players(df, lines)
-
-    top_over, top_under = rank_props(players)
-
-    power4 = build_slips(top_over, 4)
-    power6 = build_slips(top_over, 6)
-    power8 = build_slips(top_over, 8)
-
-    report = {
-        "date": datetime.now().strftime("%Y-%m-%d"),
-        "top_overs": top_over,
-        "top_unders": top_under,
-        "power4": power4,
-        "power6": power6,
-        "power8": power8
-    }
-
     os.makedirs("data", exist_ok=True)
+    img.save(OUTPUT_IMG)
+    logger.info(f"Cheatsheet image saved to {OUTPUT_IMG}")
 
-    with open(OUTPUT_JSON, "w") as f:
-        json.dump(report, f, indent=2)
 
-    create_cheatsheet(top_over, top_under)
+# ================================
+# MAIN SCRAPER FUNCTION (for Flask)
+# ================================
 
-    return report
+def run_daily_scrape(output_path=None):
+    """
+    Run the daily scraper.
+    If output_path is provided, save JSON there (used by app.py).
+    """
+    try:
+        logger.info("Starting daily scrape...")
 
+        # Load fallback data
+        if not os.path.exists(FALLBACK_CSV):
+            logger.error(f"Fallback CSV not found: {FALLBACK_CSV}")
+            raise FileNotFoundError(f"Missing file: {FALLBACK_CSV}")
+
+        df = pd.read_csv(FALLBACK_CSV)
+
+        # Fetch live lines
+        lines = fetch_prizepicks()
+
+        # Build player props
+        players = build_players(df, lines)
+
+        # Rank props
+        top_over, top_under = rank_props(players)
+
+        # Build power slips
+        power4 = build_slips(top_over, 4)
+        power6 = build_slips(top_over, 6)
+        power8 = build_slips(top_over, 8)
+
+        # Create final report
+        report = {
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "generated_at": datetime.now().isoformat(),
+            "top_overs": top_over,
+            "top_unders": top_under,
+            "power4": power4,
+            "power6": power6,
+            "power8": power8
+        }
+
+        # Save JSON
+        os.makedirs("data", exist_ok=True)
+        save_path = output_path or OUTPUT_JSON
+        with open(save_path, "w", encoding="utf-8") as f:
+            json.dump(report, f, indent=2)
+
+        # Generate image
+        create_cheatsheet(top_over, top_under)
+
+        logger.info(f"✅ Scrape completed successfully. Report saved to {save_path}")
+        return report
+
+    except Exception as e:
+        logger.error(f"❌ Scrape failed: {e}", exc_info=True)
+        raise
+
+
+# ================================
+# CLI ENTRY POINT
+# ================================
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    run_daily()
+    run_daily_scrape()
