@@ -7,7 +7,7 @@
     <style>
         :root {
             --bg: #0a0a0a;
-            --card: #141414;
+            --card: #1a1a2e;
             --text: #f1f1f1;
             --gold: #ffd700;
             --accent: #c026d3;
@@ -18,8 +18,8 @@
         h1 { margin: 0; color: var(--gold); font-size: 2.4rem; letter-spacing: 3px; }
         .flame-canvas { position: absolute; top: 15px; right: 20px; width: 90px; height: 90px; }
         .tabs { display: flex; overflow-x: auto; background: #111; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border); }
-        .tab { padding: 16px 22px; cursor: pointer; white-space: nowrap; font-weight: 500; }
-        .tab.active { background: var(--accent); color: white; }
+        .tab { padding: 16px 22px; cursor: pointer; white-space: nowrap; font-weight: 500; color: #aaa; }
+        .tab.active { color: var(--gold); border-bottom: 3px solid var(--gold); }
         .content { padding: 20px; }
         .player-row { display: flex; align-items: center; background: var(--card); margin-bottom: 12px; border-radius: 12px; padding: 14px; border: 1px solid var(--border); }
         .confidence { background: #22c55e; color: #000; padding: 4px 12px; border-radius: 9999px; font-size: 0.85rem; font-weight: bold; }
@@ -38,14 +38,14 @@
     </header>
 
     <div class="tabs" id="tabs">
-        <div class="tab active" data-pane="p4s">Today's P4s</div>
-        <div class="tab" data-pane="slips">Slips</div>
-        <div class="tab" data-pane="leaders">Leaders</div>
-        <div class="tab" data-pane="locks">Top Locks</div>
-        <div class="tab" data-pane="value">Value Plays</div>
-        <div class="tab" data-pane="unders">+EV Unders</div>
-        <div class="tab" data-pane="builder">Slip Builder</div>
-        <div class="tab" data-pane="cheatsheet">Cheatsheet</div>
+        <div class="tab" data-pane="p4s">TODAY'S P4S</div>
+        <div class="tab active" data-pane="slips">SLIPS</div>
+        <div class="tab" data-pane="leaders">LEADERS</div>
+        <div class="tab" data-pane="locks">TOP LOCKS</div>
+        <div class="tab" data-pane="value">VALUE PLAYS</div>
+        <div class="tab" data-pane="unders">UNDERS</div>
+        <div class="tab" data-pane="builder">BUILDER</div>
+        <div class="tab" data-pane="cheatsheet">CHEATSHEET</div>
     </div>
 
     <div class="content" id="pane-content"></div>
@@ -53,12 +53,12 @@
     <script>
         let reportData = {};
 
-        // Flame / smoke logo animation (your old style - glowing yellow/orange particles)
+        // Flame/smoke logo animation (your old glowing style)
         const canvas = document.getElementById('flame');
         const ctx = canvas.getContext('2d');
         let particles = [];
         function createParticle() {
-            return { x: canvas.width/2 + (Math.random()*20-10), y: canvas.height - 10, size: Math.random()*7 + 5, speed: Math.random()*3.5 + 2.5, opacity: 1, hue: 30 + Math.random()*40 };
+            return { x: canvas.width/2 + (Math.random()*20-10), y: canvas.height - 10, size: Math.random()*8 + 5, speed: Math.random()*3.5 + 2.5, opacity: 1, hue: 30 + Math.random()*40 };
         }
         function animateFlame() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -83,7 +83,7 @@
             try {
                 const res = await fetch('/api/report');
                 reportData = await res.json();
-                renderCurrentPane('p4s');
+                renderCurrentPane('slips');  // default to SLIPS tab like your screenshot
             } catch (e) {
                 console.error("Failed to load report", e);
             }
@@ -114,9 +114,37 @@
                 return;
             }
 
-            // Your original panes render here (P4s, Leaders, etc.)
-            // Replace the line below with your original rendering code if needed
-            content.innerHTML = `<div style="text-align:center; padding:40px; color:#94a3b8;">${pane} content loaded from reportData</div>`;
+            // Your original SLIPS / RECOMMENDED SLIPS rendering (matching your screenshot)
+            if (pane === 'slips') {
+                let html = `<h2 style="color: var(--gold);">RECOMMENDED SLIPS</h2>`;
+                if (reportData.slips && reportData.slips["2"]) {
+                    html += `<h3 style="color: #a855f7;">2-LEG SLIPS</h3>`;
+                    reportData.slips["2"].forEach(slip => {
+                        html += `
+                            <div style="background: var(--card); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                                <div style="margin-bottom: 12px;">Total Proj: <strong>${slip.total_proj}</strong> • Target: <strong>PRA</strong></div>
+                                ${slip.players.map(player => `
+                                    <div style="background: #1f2937; border-radius: 10px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between;">
+                                        <div>
+                                            <strong>Player</strong><br>
+                                            <span style="background: #8b5cf6; color: white; padding: 2px 8px; border-radius: 9999px; font-size: 0.8rem;">PRA</span>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            DVP 0<br>
+                                            Proj N/A
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `;
+                    });
+                }
+                content.innerHTML = html;
+                return;
+            }
+
+            // Placeholder for other tabs (add your original code here if needed)
+            content.innerHTML = `<div style="text-align:center; padding:60px; color:#94a3b8;">${pane} tab content (your original rendering goes here)</div>`;
         }
 
         function exportReport() {
@@ -137,9 +165,6 @@
             setupTabs();
             loadReport();
         };
-
-        // Optional auto-refresh
-        setInterval(loadReport, 300000);
     </script>
 </body>
 </html>
