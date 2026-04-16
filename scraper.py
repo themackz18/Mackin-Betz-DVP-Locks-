@@ -86,10 +86,10 @@ def build_players(df, lines):
                 "opp": opp,
                 "game": game_key,
                 "stat": stat,
-                "proj": round(proj, 1),
-                "line": round(line, 1),
+                "proj": round(proj, 1),          # Our projection
+                "line": round(line, 1),          # Posted line
                 "hit_rate": round(hit * 100, 1),
-                "edge": round(edge * 100, 1),
+                "edge": round(edge * 100, 1),    # Edge %
                 "dvp": round(dvp, 1),
                 "confidence": confidence,
                 "recommended_pick": recommended_pick,
@@ -99,17 +99,17 @@ def build_players(df, lines):
                 "l5_pra": round(projection * 1.12, 1),
                 "matchup_grade": {"grade": "A" if dvp >= 20 else "B" if dvp >= 15 else "C", "color": "#10b981" if dvp >= 18 else "#f59e0b"}
             })
-    logger.info(f"Built {len(players)} player props across games")
+    logger.info(f"Built {len(players)} player props")
     return players
 
 def rank_props(players):
     overs = sorted(players, key=lambda x: x["hit_rate"], reverse=True)
-    unders = sorted(players, key=lambda x: x["edge"])
+    unders = sorted([p for p in players if p["edge"] < 0], key=lambda x: x["edge"])  # strong unders
     return overs[:25], unders[:15]
 
 def build_slips(players, size):
     slips = []
-    for combo in combinations(players[:35], size):
+    for combo in combinations(players[:40], size):
         if len(set(p["name"] for p in combo)) < size: continue
         prob = 1.0
         for p in combo:
@@ -144,7 +144,7 @@ def create_cheatsheet(top_over, top_under):
         pick = p["recommended_pick"][0]
         color = "#4ade80" if pick == "O" else "#f87171"
         draw.text((50, y), f"{p['name'][:20]}  •  {p['stat']} {pick}{p['line']}", fill=color, font=font)
-        draw.text((720, y), f"{p['hit_rate']}%   {p['confidence']}/10", fill="#fcd34d", font=font_small)
+        draw.text((720, y), f"{p['hit_rate']}%   {p['confidence']}/10   Edge {p['edge']}%", fill="#fcd34d", font=font_small)
         y += 40
 
     y += 30
@@ -154,7 +154,7 @@ def create_cheatsheet(top_over, top_under):
         pick = p["recommended_pick"][0]
         color = "#4ade80" if pick == "O" else "#f87171"
         draw.text((50, y), f"{p['name'][:20]}  •  {p['stat']} {pick}{p['line']}", fill=color, font=font)
-        draw.text((720, y), f"{p['hit_rate']}%   {p['confidence']}/10", fill="#fcd34d", font=font_small)
+        draw.text((720, y), f"{p['hit_rate']}%   {p['confidence']}/10   Edge {p['edge']}%", fill="#fcd34d", font=font_small)
         y += 40
 
     os.makedirs("data", exist_ok=True)
@@ -170,14 +170,14 @@ def run_daily_scrape(output_path=None):
         players = build_players(df, lines)
         top_over, top_under = rank_props(players)
 
-        # Group same_game_p4 by game
+        # Group by game for P4s
         from collections import defaultdict
         game_groups = defaultdict(list)
-        for p in top_over[:30]:
+        for p in top_over:
             game_key = p.get("game", "Main Slate")
             game_groups[game_key].append(p)
 
-        same_game_p4 = [{"game": g, "alpha": players} for g, players in game_groups.items()]
+        same_game_p4 = [{"game": g, "alpha": ps} for g, ps in game_groups.items()]
 
         cat_map = {"PTS": [], "REB": [], "AST": [], "PRA": []}
         for p in top_over:
@@ -206,7 +206,7 @@ def run_daily_scrape(output_path=None):
             "power4": build_slips(top_over, 4),
             "power6": build_slips(top_over, 6),
             "power8": build_slips(top_over, 8),
-            "ev_unders": []
+            "ev_unders": [p for p in top_under if p["edge"] < -5][:12]   # strong unders
         }
 
         os.makedirs("data", exist_ok=True)
@@ -214,7 +214,7 @@ def run_daily_scrape(output_path=None):
             json.dump(report, f, indent=2)
 
         create_cheatsheet(top_over, top_under)
-        logger.info("✅ Report + cheatsheet ready with multi-game support")
+        logger.info("✅ Full report with line, proj, edge, multi-game slips & unders")
         return report
     except Exception as e:
         logger.error(f"Scrape failed: {e}", exc_info=True)
