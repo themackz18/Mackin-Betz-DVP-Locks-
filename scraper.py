@@ -1,4 +1,4 @@
-
+import os
 import json
 import logging
 import pandas as pd
@@ -10,41 +10,25 @@ from PIL import Image, ImageDraw, ImageFont
 
 logger = logging.getLogger(__name__)
 
-# ================================
 # CONFIG
-# ================================
-
 FALLBACK_CSV = "data/fallback.csv"
 OUTPUT_JSON  = "data/mackin_report.json"
 OUTPUT_IMG   = "data/mackin_cheatsheet.png"
 
 SIM_RUNS = 5000
-
-PAYOUTS = {
-    4: 10,
-    6: 25,
-    8: 100
-}
-
-# ================================
-# PRIZEPICKS API
-# ================================
+PAYOUTS = {4: 10, 6: 25, 8: 100}
 
 def fetch_prizepicks():
-    """Fetch projections from PrizePicks API"""
     url = "https://api.prizepicks.com/projections?league_id=7&per_page=250&single_stat=true"
     try:
         resp = requests.get(url, timeout=15)
         resp.raise_for_status()
         data = resp.json()
-
         players = {}
         id_map = {}
-
         for i in data.get("included", []):
             if i.get("type") == "new_player":
                 id_map[i["id"]] = i["attributes"]["name"]
-
         for p in data.get("data", []):
             attr = p["attributes"]
             pid = p["relationships"]["new_player"]["data"]["id"]
@@ -53,79 +37,57 @@ def fetch_prizepicks():
                 stat = attr["stat_type"].upper().replace(" ", "_")
                 line = attr["line_score"]
                 players.setdefault(name, {})[stat] = float(line)
-
-        logger.info(f"Fetched PrizePicks data for {len(players)} players")
+        logger.info(f"Fetched {len(players)} players from PrizePicks")
         return players
     except Exception as e:
-        logger.error(f"Failed to fetch PrizePicks data: {e}")
+        logger.error(f"PrizePicks fetch failed: {e}")
         return {}
-
-
-# ================================
-# HELPERS
-# ================================
 
 def simulate_hit_rate(proj, line, std):
     sims = np.random.normal(proj, std, SIM_RUNS)
     return np.mean(sims > line)
 
-
 def apply_last5_boost(row):
-    # Use Projection as base since we don't have real L5 data
-    return 1.1  # slight boost for now
-
+    return 1.08
 
 def dvp_boost(dvp_rank):
-    if dvp_rank >= 25:
-        return 1.15
-    elif dvp_rank >= 20:
-        return 1.08
-    elif dvp_rank <= 10:
-        return 0.90
+    if dvp_rank >= 25: return 1.15
+    if dvp_rank >= 20: return 1.08
+    if dvp_rank <= 10: return 0.90
     return 1.0
-
-
-# ================================
-# BUILD PLAYERS - IMPROVED FOR YOUR CSV
-# ================================
 
 def build_players(df, lines):
     players = []
     for _, r in df.iterrows():
         name = str(r.get("Name", "")).strip()
-        if not name:
-            continue
+        if not name: continue
 
-        # Map your actual CSV columns
-        proj_value = float(r.get("Projection", 0))
+        projection = float(r.get("Projection", 0))
         dvp = float(r.get("DVP", 15))
         team = r.get("Team", "N/A")
         opp = r.get("Opp", "N/A")
 
-        # Create stats using Projection as main value
         stats = {
-            "PTS": proj_value,
-            "REB": proj_value * 0.25,   # rough estimate
-            "AST": proj_value * 0.22,   # rough estimate
-            "PRA": proj_value * 1.5     # rough PRA
+            "PTS": projection,
+            "REB": projection * 0.28,
+            "AST": projection * 0.24,
+            "PRA": projection * 1.55
         }
 
         for stat, base_proj in stats.items():
             line = (lines.get(name) or {}).get(stat)
             if not line:
-                line = base_proj * 1.05  # fallback line
+                line = base_proj * 1.06
 
-            if base_proj <= 0:
+            if base_proj < 3:
                 continue
 
-            # Apply boosts
             proj = base_proj * apply_last5_boost(r) * dvp_boost(dvp)
-            std_dev = max(3, proj * 0.25)
-
+            std_dev = max(3, proj * 0.28)
             hit = simulate_hit_rate(proj, line, std_dev)
             edge = (proj - line) / line if line > 0 else 0
 
-            confidence = min(10, int(hit * 10 + 2))
+            confidence = min(10, int(hit * 10 + 1.5))
 
             players.append({
                 "name": name,
@@ -139,13 +101,13 @@ def build_players(df, lines):
                 "dvp": round(dvp, 1),
                 "confidence": confidence,
                 "target_prop": stat,
-                "pts": round(proj_value, 1),
-                "reb": round(proj_value * 0.25, 1),
-                "ast": round(proj_value * 0.22, 1),
-                "l5_pra": round(proj_value * 1.1, 1),
+                "pts": round(projection, 1),
+                "reb": round(projection * 0.28, 1),
+                "ast": round(projection * 0.24, 1),
+                "l5_pra": round(projection * 1.12, 1),
                 "matchup_grade": {
-                    "grade": "A" if dvp >= 22 else "B" if dvp >= 18 else "C",
-                    "color": "#10b981" if dvp >= 20 else "#f59e0b"
+                    "grade": "A" if dvp >= 20 else "B" if dvp >= 15 else "C",
+                    "color": "#10b981" if dvp >= 18 else "#f59e0b"
                 }
             })
 
@@ -153,24 +115,19 @@ def build_players(df, lines):
     return players
 
 
-# ================================
-# RANKING & SLIPS
-# ================================
-
 def rank_props(players):
     overs = sorted(players, key=lambda x: x["hit_rate"], reverse=True)
     unders = sorted(players, key=lambda x: x["edge"])
-    return overs[:15], unders[:10]
+    return overs[:20], unders[:12]
 
 
 def build_slips(players, size):
     slips = []
-    for combo in combinations(players[:25], size):
-        if len(set(p["name"] for p in combo)) < size:
-            continue
+    for combo in combinations(players[:30], size):
+        if len(set(p["name"] for p in combo)) < size: continue
         prob = 1.0
         for p in combo:
-            prob *= (p["hit_rate"] / 100)
+            prob *= (p["hit_rate"] / 100.0)
         ev = prob * PAYOUTS.get(size, 10)
         slips.append({
             "players": [p["name"] for p in combo],
@@ -207,29 +164,20 @@ def create_cheatsheet(top_over, top_under):
 
     os.makedirs("data", exist_ok=True)
     img.save(OUTPUT_IMG)
-    logger.info(f"Cheatsheet saved to {OUTPUT_IMG}")
+    logger.info(f"Cheatsheet saved: {OUTPUT_IMG}")
 
-
-# ================================
-# MAIN FUNCTION
-# ================================
 
 def run_daily_scrape(output_path=None):
     try:
-        logger.info("Starting Mackin Betz daily scrape...")
-
+        logger.info("Starting daily scrape...")
         if not os.path.exists(FALLBACK_CSV):
-            logger.error(f"Fallback CSV not found: {FALLBACK_CSV}")
-            raise FileNotFoundError(f"Missing file: {FALLBACK_CSV}")
+            raise FileNotFoundError(f"Missing {FALLBACK_CSV}")
 
         df = pd.read_csv(FALLBACK_CSV)
         logger.info(f"Loaded {len(df)} rows from fallback.csv")
 
         lines = fetch_prizepicks()
         players = build_players(df, lines)
-
-        if len(players) == 0:
-            logger.warning("No players were generated - check your CSV columns")
 
         top_over, top_under = rank_props(players)
 
@@ -238,7 +186,7 @@ def run_daily_scrape(output_path=None):
             "generated_at": datetime.now().isoformat(),
             "game_count": len(df),
             "slate_date": datetime.now().strftime("%Y-%m-%d"),
-            "same_game_p4": [{"game": "Main Slate", "alpha": top_over[:10]}],
+            "same_game_p4": [{"game": "Main Slate", "alpha": top_over[:12]}],
             "slips": {
                 "2": build_slips(top_over, 2),
                 "3": build_slips(top_over, 3),
@@ -246,13 +194,13 @@ def run_daily_scrape(output_path=None):
                 "5": build_slips(top_over, 5)
             },
             "category_leaders": [
-                {"category": "PTS", "players": sorted([p for p in top_over if p["stat"] == "PTS"], key=lambda x: x["proj"], reverse=True)[:6]},
-                {"category": "REB", "players": sorted([p for p in top_over if p["stat"] == "REB"], key=lambda x: x["proj"], reverse=True)[:6]},
-                {"category": "AST", "players": sorted([p for p in top_over if p["stat"] == "AST"], key=lambda x: x["proj"], reverse=True)[:6]},
+                {"category": "PTS", "players": [p for p in top_over if p["stat"] == "PTS"][:6]},
+                {"category": "REB", "players": [p for p in top_over if p["stat"] == "REB"][:6]},
+                {"category": "AST", "players": [p for p in top_over if p["stat"] == "AST"][:6]},
                 {"category": "PRA", "players": top_over[:6]}
             ],
-            "top_locks": [p for p in top_over if p["confidence"] >= 7][:12],
-            "value_plays": [p for p in top_over if p["edge"] > 5][:12],
+            "top_locks": [p for p in top_over if p["confidence"] >= 6][:15],
+            "value_plays": [p for p in top_over if p["edge"] > 4][:15],
             "top_overs": top_over,
             "top_unders": top_under,
             "power4": build_slips(top_over, 4),
@@ -268,14 +216,14 @@ def run_daily_scrape(output_path=None):
 
         create_cheatsheet(top_over, top_under)
 
-        logger.info(f"✅ Scrape completed successfully. Generated {len(players)} props.")
+        logger.info(f"✅ Completed - Generated {len(players)} props")
         return report
 
     except Exception as e:
-        logger.error(f"❌ Scrape failed: {e}", exc_info=True)
+        logger.error(f"Scrape failed: {e}", exc_info=True)
         raise
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    run_daily_scrape(
+    run_daily_scrape()
