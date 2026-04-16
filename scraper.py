@@ -64,6 +64,7 @@ def build_players(df, lines):
         dvp = float(r.get("DVP", 15))
         team = r.get("Team", "N/A")
         opp = r.get("Opp", "N/A")
+        game_key = f"{team} vs {opp}"
 
         stats = {"PTS": projection, "REB": projection * 0.28, "AST": projection * 0.24, "PRA": projection * 1.55}
 
@@ -83,6 +84,7 @@ def build_players(df, lines):
                 "name": name,
                 "team": team,
                 "opp": opp,
+                "game": game_key,
                 "stat": stat,
                 "proj": round(proj, 1),
                 "line": round(line, 1),
@@ -97,17 +99,17 @@ def build_players(df, lines):
                 "l5_pra": round(projection * 1.12, 1),
                 "matchup_grade": {"grade": "A" if dvp >= 20 else "B" if dvp >= 15 else "C", "color": "#10b981" if dvp >= 18 else "#f59e0b"}
             })
-    logger.info(f"Built {len(players)} player props")
+    logger.info(f"Built {len(players)} player props across games")
     return players
 
 def rank_props(players):
     overs = sorted(players, key=lambda x: x["hit_rate"], reverse=True)
     unders = sorted(players, key=lambda x: x["edge"])
-    return overs[:20], unders[:12]
+    return overs[:25], unders[:15]
 
 def build_slips(players, size):
     slips = []
-    for combo in combinations(players[:30], size):
+    for combo in combinations(players[:35], size):
         if len(set(p["name"] for p in combo)) < size: continue
         prob = 1.0
         for p in combo:
@@ -120,7 +122,7 @@ def build_slips(players, size):
             "ev": round(ev, 2),
             "target_prop": "PRA"
         })
-    return sorted(slips, key=lambda x: x["ev"], reverse=True)[:8]
+    return sorted(slips, key=lambda x: x["ev"], reverse=True)[:10]
 
 def create_cheatsheet(top_over, top_under):
     img = Image.new("RGB", (1050, 920), (20, 20, 28))
@@ -168,6 +170,15 @@ def run_daily_scrape(output_path=None):
         players = build_players(df, lines)
         top_over, top_under = rank_props(players)
 
+        # Group same_game_p4 by game
+        from collections import defaultdict
+        game_groups = defaultdict(list)
+        for p in top_over[:30]:
+            game_key = p.get("game", "Main Slate")
+            game_groups[game_key].append(p)
+
+        same_game_p4 = [{"game": g, "alpha": players} for g, players in game_groups.items()]
+
         cat_map = {"PTS": [], "REB": [], "AST": [], "PRA": []}
         for p in top_over:
             if p["stat"] in cat_map:
@@ -180,8 +191,13 @@ def run_daily_scrape(output_path=None):
             "generated_at": datetime.now().isoformat(),
             "game_count": len(df),
             "slate_date": datetime.now().strftime("%Y-%m-%d"),
-            "same_game_p4": [{"game": "Main Slate", "alpha": top_over[:12]}],
-            "slips": {"2": build_slips(top_over, 2), "3": build_slips(top_over, 3), "4": build_slips(top_over, 4), "5": build_slips(top_over, 5)},
+            "same_game_p4": same_game_p4,
+            "slips": {
+                "2": build_slips(top_over, 2),
+                "3": build_slips(top_over, 3),
+                "4": build_slips(top_over, 4),
+                "5": build_slips(top_over, 5)
+            },
             "category_leaders": category_leaders,
             "top_locks": [p for p in top_over if p["confidence"] >= 6][:15],
             "value_plays": [p for p in top_over if p["edge"] > 4][:15],
@@ -198,7 +214,7 @@ def run_daily_scrape(output_path=None):
             json.dump(report, f, indent=2)
 
         create_cheatsheet(top_over, top_under)
-        logger.info("✅ Report + cheatsheet ready")
+        logger.info("✅ Report + cheatsheet ready with multi-game support")
         return report
     except Exception as e:
         logger.error(f"Scrape failed: {e}", exc_info=True)
