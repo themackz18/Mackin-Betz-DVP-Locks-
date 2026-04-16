@@ -1,4 +1,4 @@
-import os
+
 import json
 import logging
 import pandas as pd
@@ -278,4 +278,4 @@ def run_daily_scrape(output_path=None):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    run_daily_scrape()
+    run_daily_scrape(
