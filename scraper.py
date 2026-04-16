@@ -46,13 +46,10 @@ def simulate_hit_rate(proj, line, std):
     sims = np.random.normal(proj, std, SIM_RUNS)
     return np.mean(sims > line)
 
-def apply_last5_boost(row):
-    return 1.08
-
 def dvp_boost(dvp_rank):
-    if dvp_rank >= 25: return 1.15
-    if dvp_rank >= 20: return 1.08
-    if dvp_rank <= 10: return 0.90
+    if dvp_rank >= 25: return 1.12
+    if dvp_rank >= 20: return 1.07
+    if dvp_rank <= 10: return 0.93
     return 1.0
 
 def build_players(df, lines):
@@ -60,31 +57,35 @@ def build_players(df, lines):
     for _, r in df.iterrows():
         name = str(r.get("Name", "")).strip()
         if not name: continue
-        projection = float(r.get("Projection", 0))
+
+        # Base projection from CSV, capped realistically
+        base_proj = float(r.get("Projection", 0))
+        base_proj = min(base_proj, 32)  # No 40+ PPG nonsense
+
         dvp = float(r.get("DVP", 15))
         team = r.get("Team", "N/A")
         opp = r.get("Opp", "N/A")
         game_key = f"{team} vs {opp}"
 
-        # Use multiple categories from CSV
+        # Realistic stat bases
         stats = {
-            "PTS": projection,
-            "REB": float(r.get("REB", projection * 0.28)),
-            "AST": float(r.get("AST", projection * 0.24)),
-            "PRA": projection * 1.55
+            "PTS": min(base_proj, 32),
+            "REB": float(r.get("REB", base_proj * 0.28)),
+            "AST": float(r.get("AST", base_proj * 0.24)),
+            "PRA": base_proj * 1.55
         }
 
-        for stat, base_proj in stats.items():
-            line = (lines.get(name) or {}).get(stat) or (base_proj * 1.06)
-            if base_proj < 3: continue
+        for stat, base in stats.items():
+            line = (lines.get(name) or {}).get(stat) or (base * 1.05)
+            if base < 3: continue
 
-            proj = base_proj * apply_last5_boost(r) * dvp_boost(dvp)
-            std_dev = max(3, proj * 0.28)
+            proj = base * dvp_boost(dvp)
+            std_dev = max(2.5, proj * 0.26)
             hit = simulate_hit_rate(proj, line, std_dev)
             edge = (proj - line) / line if line > 0 else 0
 
             confidence = min(10, int(hit * 10 + 1.5))
-            recommended_pick = "OVER" if edge > 0 else "UNDER"
+            recommended_pick = "OVER" if edge > 3 else "UNDER" if edge < -3 else "EVEN"
 
             players.append({
                 "name": name,
@@ -92,23 +93,21 @@ def build_players(df, lines):
                 "opp": opp,
                 "game": game_key,
                 "stat": stat,
-                "line": round(line, 1),          # Posted line
-                "proj": round(proj, 1),          # Our projection
-                "edge": round(edge * 100, 1),    # Edge %
+                "line": round(line, 1),       # Posted line
+                "proj": round(proj, 1),       # Our realistic projection
+                "edge": round(edge * 100, 1), # Edge %
                 "hit_rate": round(hit * 100, 1),
                 "dvp": round(dvp, 1),
                 "confidence": confidence,
                 "recommended_pick": recommended_pick,
-                "pts": round(projection, 1),
+                "pts": round(stats.get("PTS", 0), 1),
                 "reb": round(stats.get("REB", 0), 1),
                 "ast": round(stats.get("AST", 0), 1),
-                "l5_pra": round(projection * 1.12, 1),
+                "l5_pra": round(base * 1.08, 1),
                 "matchup_grade": {"grade": "A" if dvp >= 20 else "B" if dvp >= 15 else "C", "color": "#10b981" if dvp >= 18 else "#f59e0b"}
             })
-    logger.info(f"Built {len(players)} player props with line/proj/edge")
-    return 
-
-players
+    logger.info(f"Built {len(players)} realistic player props")
+    return players
 
 def rank_props(players):
     overs = sorted(players, key=lambda x: x["hit_rate"], reverse=True)
@@ -177,7 +176,6 @@ def run_daily_scrape(output_path=None):
         players = build_players(df, lines)
         top_over, top_under = rank_props(players)
 
-        # Group by game for P4s
         from collections import defaultdict
         game_groups = defaultdict(list)
         for p in top_over:
@@ -221,7 +219,7 @@ def run_daily_scrape(output_path=None):
             json.dump(report, f, indent=2)
 
         create_cheatsheet(top_over, top_under)
-        logger.info("✅ Report with line/proj/edge + multi-stat slips for remaining game")
+        logger.info("✅ Report with realistic line/proj/edge + multi-stat slips")
         return report
     except Exception as e:
         logger.error(f"Scrape failed: {e}", exc_info=True)
