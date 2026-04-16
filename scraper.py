@@ -46,10 +46,13 @@ def simulate_hit_rate(proj, line, std):
     sims = np.random.normal(proj, std, SIM_RUNS)
     return np.mean(sims > line)
 
+def apply_last5_boost(row):
+    return 1.08
+
 def dvp_boost(dvp_rank):
-    if dvp_rank >= 25: return 1.12
-    if dvp_rank >= 20: return 1.07
-    if dvp_rank <= 10: return 0.93
+    if dvp_rank >= 25: return 1.15
+    if dvp_rank >= 20: return 1.08
+    if dvp_rank <= 10: return 0.90
     return 1.0
 
 def build_players(df, lines):
@@ -57,35 +60,31 @@ def build_players(df, lines):
     for _, r in df.iterrows():
         name = str(r.get("Name", "")).strip()
         if not name: continue
-
-        # Base projection from CSV, but cap it realistically (no 40+ PPG)
-        base_proj = float(r.get("Projection", 0))
-        base_proj = min(base_proj, 32)  # realistic cap for any stat
-
+        projection = float(r.get("Projection", 0))
         dvp = float(r.get("DVP", 15))
         team = r.get("Team", "N/A")
         opp = r.get("Opp", "N/A")
         game_key = f"{team} vs {opp}"
 
-        # Realistic stat bases (use CSV where available, else scaled)
+        # Use multiple categories from CSV
         stats = {
-            "PTS": min(base_proj, 32),
-            "REB": float(r.get("REB", base_proj * 0.28)),
-            "AST": float(r.get("AST", base_proj * 0.24)),
-            "PRA": base_proj * 1.55
+            "PTS": projection,
+            "REB": float(r.get("REB", projection * 0.28)),
+            "AST": float(r.get("AST", projection * 0.24)),
+            "PRA": projection * 1.55
         }
 
-        for stat, base in stats.items():
-            line = (lines.get(name) or {}).get(stat) or (base * 1.05)
-            if base < 3: continue
+        for stat, base_proj in stats.items():
+            line = (lines.get(name) or {}).get(stat) or (base_proj * 1.06)
+            if base_proj < 3: continue
 
-            proj = base * dvp_boost(dvp)   # cleaner boost
-            std_dev = max(2.5, proj * 0.26)
+            proj = base_proj * apply_last5_boost(r) * dvp_boost(dvp)
+            std_dev = max(3, proj * 0.28)
             hit = simulate_hit_rate(proj, line, std_dev)
             edge = (proj - line) / line if line > 0 else 0
 
             confidence = min(10, int(hit * 10 + 1.5))
-            recommended_pick = "OVER" if edge > 3 else "UNDER" if edge < -3 else "EVEN"
+            recommended_pick = "OVER" if edge > 0 else "UNDER"
 
             players.append({
                 "name": name,
@@ -93,24 +92,140 @@ def build_players(df, lines):
                 "opp": opp,
                 "game": game_key,
                 "stat": stat,
-                "line": round(line, 1),      # Posted line
-                "proj": round(proj, 1),      # Our realistic projection
-                "edge": round(edge * 100, 1),# Edge %
+                "line": round(line, 1),          # Posted line
+                "proj": round(proj, 1),          # Our projection
+                "edge": round(edge * 100, 1),    # Edge %
                 "hit_rate": round(hit * 100, 1),
                 "dvp": round(dvp, 1),
                 "confidence": confidence,
                 "recommended_pick": recommended_pick,
-                "pts": round(stats.get("PTS", 0), 1),
+                "pts": round(projection, 1),
                 "reb": round(stats.get("REB", 0), 1),
                 "ast": round(stats.get("AST", 0), 1),
-                "l5_pra": round(base * 1.08, 1),
+                "l5_pra": round(projection * 1.12, 1),
                 "matchup_grade": {"grade": "A" if dvp >= 20 else "B" if dvp >= 15 else "C", "color": "#10b981" if dvp >= 18 else "#f59e0b"}
             })
-    logger.info(f"Built {len(players)} realistic player props")
-    return players
+    logger.info(f"Built {len(players)} player props with line/proj/edge")
+    return 
 
-# Rest of the functions (rank_props, build_slips, create_cheatsheet, run_daily_scrape) stay the same as last version
-# (I kept them short here for space — copy the full run_daily_scrape + helpers from the previous message if needed, or let me know and I'll paste the complete file again)
+players
+
+def rank_props(players):
+    overs = sorted(players, key=lambda x: x["hit_rate"], reverse=True)
+    unders = sorted([p for p in players if p["edge"] < 0], key=lambda x: x["edge"])
+    return overs[:25], unders[:15]
+
+def build_slips(players, size):
+    slips = []
+    for combo in combinations(players[:40], size):
+        if len(set(p["name"] for p in combo)) < size: continue
+        prob = 1.0
+        for p in combo:
+            prob *= (p["hit_rate"] / 100.0)
+        ev = prob * PAYOUTS.get(size, 10)
+        slips.append({
+            "players": [p["name"] for p in combo],
+            "total_proj": round(sum(p["proj"] for p in combo), 1),
+            "win_prob": round(prob * 100, 2),
+            "ev": round(ev, 2),
+            "target_prop": "PRA"
+        })
+    return sorted(slips, key=lambda x: x["ev"], reverse=True)[:10]
+
+def create_cheatsheet(top_over, top_under):
+    img = Image.new("RGB", (1050, 920), (20, 20, 28))
+    draw = ImageDraw.Draw(img)
+    try:
+        font_title = ImageFont.truetype("arial.ttf", 48)
+        font = ImageFont.truetype("arial.ttf", 27)
+        font_small = ImageFont.truetype("arial.ttf", 23)
+    except:
+        font_title = font = font_small = ImageFont.load_default()
+
+    draw.text((50, 40), "MACKIN BETZ CHEATSHEET", fill="#c026d3", font=font_title)
+    draw.text((50, 100), datetime.now().strftime("%B %d, %Y • NBA Props"), fill="#94a3b8", font=font_small)
+
+    y = 170
+    draw.text((50, y), "🔥 TOP OVERS", fill="#4ade80", font=font)
+    y += 50
+    for p in top_over[:9]:
+        pick = p["recommended_pick"][0]
+        color = "#4ade80" if pick == "O" else "#f87171"
+        draw.text((50, y), f"{p['name'][:20]}  •  {p['stat']} {pick}{p['line']}", fill=color, font=font)
+        draw.text((720, y), f"{p['hit_rate']}%   {p['confidence']}/10   Edge {p['edge']}%", fill="#fcd34d", font=font_small)
+        y += 40
+
+    y += 30
+    draw.text((50, y), "❄️ STRONG UNDERS", fill="#f87171", font=font)
+    y += 50
+    for p in top_under[:8]:
+        pick = p["recommended_pick"][0]
+        color = "#4ade80" if pick == "O" else "#f87171"
+        draw.text((50, y), f"{p['name'][:20]}  •  {p['stat']} {pick}{p['line']}", fill=color, font=font)
+        draw.text((720, y), f"{p['hit_rate']}%   {p['confidence']}/10   Edge {p['edge']}%", fill="#fcd34d", font=font_small)
+        y += 40
+
+    os.makedirs("data", exist_ok=True)
+    img.save(OUTPUT_IMG)
+
+def run_daily_scrape(output_path=None):
+    try:
+        if not os.path.exists(FALLBACK_CSV):
+            raise FileNotFoundError(f"Missing {FALLBACK_CSV}")
+        df = pd.read_csv(FALLBACK_CSV)
+        lines = fetch_prizepicks()
+        players = build_players(df, lines)
+        top_over, top_under = rank_props(players)
+
+        # Group by game for P4s
+        from collections import defaultdict
+        game_groups = defaultdict(list)
+        for p in top_over:
+            game_key = p.get("game", "Main Slate")
+            game_groups[game_key].append(p)
+
+        same_game_p4 = [{"game": g, "alpha": ps} for g, ps in game_groups.items()]
+
+        cat_map = {"PTS": [], "REB": [], "AST": [], "PRA": []}
+        for p in top_over:
+            if p["stat"] in cat_map:
+                cat_map[p["stat"]].append(p)
+
+        category_leaders = [{"category": cat, "players": cat_map[cat][:6]} for cat in ["PTS", "REB", "AST", "PRA"]]
+
+        report = {
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "generated_at": datetime.now().isoformat(),
+            "game_count": len(df),
+            "slate_date": datetime.now().strftime("%Y-%m-%d"),
+            "same_game_p4": same_game_p4,
+            "slips": {
+                "2": build_slips(top_over, 2),
+                "3": build_slips(top_over, 3),
+                "4": build_slips(top_over, 4),
+                "5": build_slips(top_over, 5)
+            },
+            "category_leaders": category_leaders,
+            "top_locks": [p for p in top_over if p["confidence"] >= 6][:15],
+            "value_plays": [p for p in top_over if p["edge"] > 4][:15],
+            "top_overs": top_over,
+            "top_unders": top_under,
+            "power4": build_slips(top_over, 4),
+            "power6": build_slips(top_over, 6),
+            "power8": build_slips(top_over, 8),
+            "ev_unders": [p for p in top_under if p["edge"] < -5][:12]
+        }
+
+        os.makedirs("data", exist_ok=True)
+        with open(output_path or OUTPUT_JSON, "w", encoding="utf-8") as f:
+            json.dump(report, f, indent=2)
+
+        create_cheatsheet(top_over, top_under)
+        logger.info("✅ Report with line/proj/edge + multi-stat slips for remaining game")
+        return report
+    except Exception as e:
+        logger.error(f"Scrape failed: {e}", exc_info=True)
+        raise
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
