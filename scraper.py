@@ -123,7 +123,6 @@ def build_slips(players, size):
     return sorted(slips, key=lambda x: x["ev"], reverse=True)[:8]
 
 def create_cheatsheet(top_over, top_under):
-    # Modern but compact cheatsheet (clean dark theme)
     img = Image.new("RGB", (1050, 920), (20, 20, 28))
     draw = ImageDraw.Draw(img)
     try:
@@ -158,7 +157,7 @@ def create_cheatsheet(top_over, top_under):
 
     os.makedirs("data", exist_ok=True)
     img.save(OUTPUT_IMG)
-    logger.info(f"Modern compact cheatsheet saved")
+    logger.info(f"Cheatsheet saved")
 
 def run_daily_scrape(output_path=None):
     try:
