@@ -14,8 +14,8 @@
             --border: #333;
         }
         body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; margin: 0; padding: 0; }
-        header { background: linear-gradient(90deg, #1a0033, #330066); padding: 20px; text-align: center; position: relative; }
-        h1 { margin: 0; color: var(--gold); font-size: 2.4rem; letter-spacing: 2px; }
+        header { background: linear-gradient(90deg, #1a0033, #330066); padding: 25px 20px; text-align: center; position: relative; }
+        h1 { margin: 0; color: var(--gold); font-size: 2.4rem; letter-spacing: 3px; }
         .tabs { display: flex; overflow-x: auto; background: #111; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border); }
         .tab { padding: 16px 22px; cursor: pointer; white-space: nowrap; font-weight: 500; }
         .tab.active { background: var(--accent); color: white; }
@@ -23,7 +23,7 @@
         .player-row { display: flex; align-items: center; background: var(--card); margin-bottom: 12px; border-radius: 12px; padding: 14px; border: 1px solid var(--border); }
         .confidence { background: #22c55e; color: #000; padding: 4px 12px; border-radius: 9999px; font-size: 0.85rem; font-weight: bold; }
         .pick-pill { padding: 4px 14px; border-radius: 9999px; font-size: 0.85rem; font-weight: bold; }
-        .export-btn { background: #ffd700; color: #000; border: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px 0; }
+        .export-btn { background: #ffd700; color: #000; border: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 15px 0; }
         .export-btn:hover { background: #ffed4e; }
         .cheatsheet-tab img { max-width: 100%; border-radius: 16px; border: 3px solid var(--gold); box-shadow: 0 10px 30px rgba(192, 38, 211, 0.4); }
     </style>
@@ -58,7 +58,7 @@
                 renderCurrentPane('p4s');
             } catch (e) {
                 console.error("Failed to load report", e);
-                document.getElementById('pane-content').innerHTML = '<p style="text-align:center; color:#f87171;">Error loading data. Try Refresh Report.</p>';
+                document.getElementById('pane-content').innerHTML = '<p style="text-align:center; color:#f87171; padding:40px;">Error loading data.<br>Try clicking Refresh Report.</p>';
             }
         }
 
@@ -87,19 +87,15 @@
                 return;
             }
 
-            // Restore your original pane rendering here
-            // For now, show a note — replace this block with your original renderP4s(), renderLeaders(), etc. functions
-            content.innerHTML = `
-                <div style="text-align:center; padding:60px 20px; color:#94a3b8;">
-                    <p>Your original ${pane} tab content goes here.</p>
-                    <p style="margin-top:20px;">Copy your original JS rendering code (player_card macro, etc.) into this function.</p>
-                </div>
-            `;
+            // YOUR ORIGINAL PANE CODE GOES HERE
+            // Paste your original rendering functions for P4s, Slips, Leaders, etc. below this line
+            // For example: renderP4s(), renderLeaders(), etc. that use the player_card macro
+            content.innerHTML = `<div style="text-align:center; padding:80px 20px; color:#94a3b8;">${pane} tab content loading...<br><br>Your original pane rendering code should go here.</div>`;
         }
 
         function exportReport() {
             if (!reportData || Object.keys(reportData).length === 0) {
-                alert("No report loaded yet. Refresh the report first.");
+                alert("No report loaded yet. Click Refresh Report first.");
                 return;
             }
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(reportData, null, 2));
@@ -115,8 +111,6 @@
             setupTabs();
             loadReport();
         };
-
-        // Refresh button can call loadReport() again
     </script>
 </body>
 </html>
