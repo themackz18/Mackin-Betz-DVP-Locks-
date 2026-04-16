@@ -123,47 +123,47 @@ def build_slips(players, size):
     return sorted(slips, key=lambda x: x["ev"], reverse=True)[:8]
 
 def create_cheatsheet(top_over, top_under):
-    # Modern, compact cheatsheet
-    img = Image.new("RGB", (1100, 950), (18, 18, 25))
+    # Modern but compact cheatsheet (clean dark theme)
+    img = Image.new("RGB", (1050, 920), (20, 20, 28))
     draw = ImageDraw.Draw(img)
     try:
-        font_title = ImageFont.truetype("arial.ttf", 52)
-        font = ImageFont.truetype("arial.ttf", 28)
-        font_small = ImageFont.truetype("arial.ttf", 24)
+        font_title = ImageFont.truetype("arial.ttf", 48)
+        font = ImageFont.truetype("arial.ttf", 27)
+        font_small = ImageFont.truetype("arial.ttf", 23)
     except:
         font_title = font = font_small = ImageFont.load_default()
 
-    draw.text((50, 40), "MACKIN BETZ", fill="#c026d3", font=font_title)
-    draw.text((50, 110), "CHEATSHEET • " + datetime.now().strftime("%b %d"), fill="#94a3b8", font=font_small)
+    draw.text((50, 40), "MACKIN BETZ CHEATSHEET", fill="#c026d3", font=font_title)
+    draw.text((50, 100), datetime.now().strftime("%B %d, %Y • NBA Props"), fill="#94a3b8", font=font_small)
 
-    # Top Overs
-    draw.text((50, 180), "🔥 TOP OVERS", fill="#4ade80", font=font)
-    y = 230
-    for p in top_over[:10]:
-        pick_color = "#4ade80" if p["recommended_pick"] == "OVER" else "#f87171"
-        draw.text((50, y), f"{p['name'][:18]} • {p['stat']} {p['recommended_pick'][0]}{p['line']}", fill=pick_color, font=font)
-        draw.text((680, y), f"{p['hit_rate']}%  •  {p['confidence']}/10", fill="#fcd34d", font=font_small)
-        y += 42
+    y = 170
+    draw.text((50, y), "🔥 TOP OVERS", fill="#4ade80", font=font)
+    y += 50
+    for p in top_over[:9]:
+        pick = p["recommended_pick"][0]
+        color = "#4ade80" if pick == "O" else "#f87171"
+        draw.text((50, y), f"{p['name'][:20]}  •  {p['stat']} {pick}{p['line']}", fill=color, font=font)
+        draw.text((720, y), f"{p['hit_rate']}%   {p['confidence']}/10", fill="#fcd34d", font=font_small)
+        y += 40
 
-    # Top Unders
-    draw.text((50, y + 30), "❄️ STRONG UNDERS", fill="#f87171", font=font)
-    y += 80
+    y += 30
+    draw.text((50, y), "❄️ STRONG UNDERS", fill="#f87171", font=font)
+    y += 50
     for p in top_under[:8]:
-        pick_color = "#4ade80" if p["recommended_pick"] == "OVER" else "#f87171"
-        draw.text((50, y), f"{p['name'][:18]} • {p['stat']} {p['recommended_pick'][0]}{p['line']}", fill=pick_color, font=font)
-        draw.text((680, y), f"{p['hit_rate']}%  •  {p['confidence']}/10", fill="#fcd34d", font=font_small)
-        y += 42
+        pick = p["recommended_pick"][0]
+        color = "#4ade80" if pick == "O" else "#f87171"
+        draw.text((50, y), f"{p['name'][:20]}  •  {p['stat']} {pick}{p['line']}", fill=color, font=font)
+        draw.text((720, y), f"{p['hit_rate']}%   {p['confidence']}/10", fill="#fcd34d", font=font_small)
+        y += 40
 
     os.makedirs("data", exist_ok=True)
     img.save(OUTPUT_IMG)
-    logger.info(f"Modern cheatsheet saved: {OUTPUT_IMG}")
+    logger.info(f"Modern compact cheatsheet saved")
 
 def run_daily_scrape(output_path=None):
     try:
-        logger.info("Starting daily scrape...")
         if not os.path.exists(FALLBACK_CSV):
             raise FileNotFoundError(f"Missing {FALLBACK_CSV}")
-
         df = pd.read_csv(FALLBACK_CSV)
         lines = fetch_prizepicks()
         players = build_players(df, lines)
@@ -174,9 +174,7 @@ def run_daily_scrape(output_path=None):
             if p["stat"] in cat_map:
                 cat_map[p["stat"]].append(p)
 
-        category_leaders = [
-            {"category": cat, "players": cat_map[cat][:6]} for cat in ["PTS", "REB", "AST", "PRA"]
-        ]
+        category_leaders = [{"category": cat, "players": cat_map[cat][:6]} for cat in ["PTS", "REB", "AST", "PRA"]]
 
         report = {
             "date": datetime.now().strftime("%Y-%m-%d"),
@@ -184,12 +182,7 @@ def run_daily_scrape(output_path=None):
             "game_count": len(df),
             "slate_date": datetime.now().strftime("%Y-%m-%d"),
             "same_game_p4": [{"game": "Main Slate", "alpha": top_over[:12]}],
-            "slips": {
-                "2": build_slips(top_over, 2),
-                "3": build_slips(top_over, 3),
-                "4": build_slips(top_over, 4),
-                "5": build_slips(top_over, 5)
-            },
+            "slips": {"2": build_slips(top_over, 2), "3": build_slips(top_over, 3), "4": build_slips(top_over, 4), "5": build_slips(top_over, 5)},
             "category_leaders": category_leaders,
             "top_locks": [p for p in top_over if p["confidence"] >= 6][:15],
             "value_plays": [p for p in top_over if p["edge"] > 4][:15],
@@ -202,12 +195,11 @@ def run_daily_scrape(output_path=None):
         }
 
         os.makedirs("data", exist_ok=True)
-        save_path = output_path or OUTPUT_JSON
-        with open(save_path, "w", encoding="utf-8") as f:
+        with open(output_path or OUTPUT_JSON, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2)
 
         create_cheatsheet(top_over, top_under)
-        logger.info("✅ Full report + modern cheatsheet generated")
+        logger.info("✅ Report + cheatsheet ready")
         return report
     except Exception as e:
         logger.error(f"Scrape failed: {e}", exc_info=True)
