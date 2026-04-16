@@ -18,7 +18,6 @@ SIM_RUNS = 5000
 PAYOUTS = {4: 10, 6: 25, 8: 100}
 
 def fetch_prizepicks():
-    # (same as before - unchanged)
     url = "https://api.prizepicks.com/projections?league_id=7&per_page=250&single_stat=true"
     try:
         resp = requests.get(url, timeout=15)
@@ -58,11 +57,9 @@ def dvp_boost(dvp_rank):
 
 def build_players(df, lines):
     players = []
-    now = datetime.now()
     for _, r in df.iterrows():
         name = str(r.get("Name", "")).strip()
         if not name: continue
-
         projection = float(r.get("Projection", 0))
         dvp = float(r.get("DVP", 15))
         team = r.get("Team", "N/A")
@@ -126,57 +123,57 @@ def build_slips(players, size):
     return sorted(slips, key=lambda x: x["ev"], reverse=True)[:8]
 
 def create_cheatsheet(top_over, top_under):
-    # Much more compact cheatsheet
-    img = Image.new("RGB", (1000, 900), (15, 15, 20))
+    # Modern, compact cheatsheet
+    img = Image.new("RGB", (1100, 950), (18, 18, 25))
     draw = ImageDraw.Draw(img)
     try:
-        font_title = ImageFont.truetype("arial.ttf", 48)
-        font = ImageFont.truetype("arial.ttf", 26)
-        font_small = ImageFont.truetype("arial.ttf", 22)
+        font_title = ImageFont.truetype("arial.ttf", 52)
+        font = ImageFont.truetype("arial.ttf", 28)
+        font_small = ImageFont.truetype("arial.ttf", 24)
     except:
         font_title = font = font_small = ImageFont.load_default()
 
-    draw.text((40, 30), "MACKIN BETZ CHEATSHEET", fill="#b026ff", font=font_title)
+    draw.text((50, 40), "MACKIN BETZ", fill="#c026d3", font=font_title)
+    draw.text((50, 110), "CHEATSHEET • " + datetime.now().strftime("%b %d"), fill="#94a3b8", font=font_small)
 
     # Top Overs
-    draw.text((40, 110), "🔥 TOP OVERS", fill="#22c55e", font=font)
-    y = 160
-    for p in top_over[:8]:
-        pick = "O" if p["recommended_pick"] == "OVER" else "U"
-        draw.text((40, y), f"{p['name']} {p['stat']} {pick}{p['line']}", fill="#22c55e", font=font)
-        draw.text((520, y), f"{p['hit_rate']}% • {p['confidence']}/10", fill="#eab308", font=font_small)
-        y += 38
+    draw.text((50, 180), "🔥 TOP OVERS", fill="#4ade80", font=font)
+    y = 230
+    for p in top_over[:10]:
+        pick_color = "#4ade80" if p["recommended_pick"] == "OVER" else "#f87171"
+        draw.text((50, y), f"{p['name'][:18]} • {p['stat']} {p['recommended_pick'][0]}{p['line']}", fill=pick_color, font=font)
+        draw.text((680, y), f"{p['hit_rate']}%  •  {p['confidence']}/10", fill="#fcd34d", font=font_small)
+        y += 42
 
     # Top Unders
-    draw.text((40, y + 20), "❄️ TOP UNDERS", fill="#ef4444", font=font)
-    y += 70
+    draw.text((50, y + 30), "❄️ STRONG UNDERS", fill="#f87171", font=font)
+    y += 80
     for p in top_under[:8]:
-        pick = "O" if p["recommended_pick"] == "OVER" else "U"
-        draw.text((40, y), f"{p['name']} {p['stat']} {pick}{p['line']}", fill="#ef4444", font=font)
-        draw.text((520, y), f"{p['hit_rate']}% • {p['confidence']}/10", fill="#eab308", font=font_small)
-        y += 38
+        pick_color = "#4ade80" if p["recommended_pick"] == "OVER" else "#f87171"
+        draw.text((50, y), f"{p['name'][:18]} • {p['stat']} {p['recommended_pick'][0]}{p['line']}", fill=pick_color, font=font)
+        draw.text((680, y), f"{p['hit_rate']}%  •  {p['confidence']}/10", fill="#fcd34d", font=font_small)
+        y += 42
 
     os.makedirs("data", exist_ok=True)
     img.save(OUTPUT_IMG)
-    logger.info(f"✅ Compact cheatsheet saved → {OUTPUT_IMG}")
+    logger.info(f"Modern cheatsheet saved: {OUTPUT_IMG}")
 
 def run_daily_scrape(output_path=None):
     try:
-        logger.info("🚀 Starting daily scrape...")
+        logger.info("Starting daily scrape...")
         if not os.path.exists(FALLBACK_CSV):
             raise FileNotFoundError(f"Missing {FALLBACK_CSV}")
 
         df = pd.read_csv(FALLBACK_CSV)
         lines = fetch_prizepicks()
         players = build_players(df, lines)
-
         top_over, top_under = rank_props(players)
 
-        # FIXED Category Leaders - now always populated
         cat_map = {"PTS": [], "REB": [], "AST": [], "PRA": []}
         for p in top_over:
             if p["stat"] in cat_map:
                 cat_map[p["stat"]].append(p)
+
         category_leaders = [
             {"category": cat, "players": cat_map[cat][:6]} for cat in ["PTS", "REB", "AST", "PRA"]
         ]
@@ -187,8 +184,12 @@ def run_daily_scrape(output_path=None):
             "game_count": len(df),
             "slate_date": datetime.now().strftime("%Y-%m-%d"),
             "same_game_p4": [{"game": "Main Slate", "alpha": top_over[:12]}],
-            "slips": {"2": build_slips(top_over, 2), "3": build_slips(top_over, 3),
-                      "4": build_slips(top_over, 4), "5": build_slips(top_over, 5)},
+            "slips": {
+                "2": build_slips(top_over, 2),
+                "3": build_slips(top_over, 3),
+                "4": build_slips(top_over, 4),
+                "5": build_slips(top_over, 5)
+            },
             "category_leaders": category_leaders,
             "top_locks": [p for p in top_over if p["confidence"] >= 6][:15],
             "value_plays": [p for p in top_over if p["edge"] > 4][:15],
@@ -201,11 +202,12 @@ def run_daily_scrape(output_path=None):
         }
 
         os.makedirs("data", exist_ok=True)
-        with open(output_path or OUTPUT_JSON, "w", encoding="utf-8") as f:
+        save_path = output_path or OUTPUT_JSON
+        with open(save_path, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2)
 
         create_cheatsheet(top_over, top_under)
-        logger.info("✅ Scrape complete - report + cheatsheet ready!")
+        logger.info("✅ Full report + modern cheatsheet generated")
         return report
     except Exception as e:
         logger.error(f"Scrape failed: {e}", exc_info=True)
