@@ -66,7 +66,13 @@ def build_players(df, lines):
         opp = r.get("Opp", "N/A")
         game_key = f"{team} vs {opp}"
 
-        stats = {"PTS": projection, "REB": projection * 0.28, "AST": projection * 0.24, "PRA": projection * 1.55}
+        # Use multiple categories from CSV
+        stats = {
+            "PTS": projection,
+            "REB": float(r.get("REB", projection * 0.28)),
+            "AST": float(r.get("AST", projection * 0.24)),
+            "PRA": projection * 1.55
+        }
 
         for stat, base_proj in stats.items():
             line = (lines.get(name) or {}).get(stat) or (base_proj * 1.06)
@@ -86,25 +92,25 @@ def build_players(df, lines):
                 "opp": opp,
                 "game": game_key,
                 "stat": stat,
-                "proj": round(proj, 1),          # Our projection
                 "line": round(line, 1),          # Posted line
-                "hit_rate": round(hit * 100, 1),
+                "proj": round(proj, 1),          # Our projection
                 "edge": round(edge * 100, 1),    # Edge %
+                "hit_rate": round(hit * 100, 1),
                 "dvp": round(dvp, 1),
                 "confidence": confidence,
                 "recommended_pick": recommended_pick,
                 "pts": round(projection, 1),
-                "reb": round(projection * 0.28, 1),
-                "ast": round(projection * 0.24, 1),
+                "reb": round(stats.get("REB", 0), 1),
+                "ast": round(stats.get("AST", 0), 1),
                 "l5_pra": round(projection * 1.12, 1),
                 "matchup_grade": {"grade": "A" if dvp >= 20 else "B" if dvp >= 15 else "C", "color": "#10b981" if dvp >= 18 else "#f59e0b"}
             })
-    logger.info(f"Built {len(players)} player props")
+    logger.info(f"Built {len(players)} player props with line/proj/edge")
     return players
 
 def rank_props(players):
     overs = sorted(players, key=lambda x: x["hit_rate"], reverse=True)
-    unders = sorted([p for p in players if p["edge"] < 0], key=lambda x: x["edge"])  # strong unders
+    unders = sorted([p for p in players if p["edge"] < 0], key=lambda x: x["edge"])
     return overs[:25], unders[:15]
 
 def build_slips(players, size):
@@ -159,7 +165,6 @@ def create_cheatsheet(top_over, top_under):
 
     os.makedirs("data", exist_ok=True)
     img.save(OUTPUT_IMG)
-    logger.info(f"Cheatsheet saved")
 
 def run_daily_scrape(output_path=None):
     try:
@@ -206,7 +211,7 @@ def run_daily_scrape(output_path=None):
             "power4": build_slips(top_over, 4),
             "power6": build_slips(top_over, 6),
             "power8": build_slips(top_over, 8),
-            "ev_unders": [p for p in top_under if p["edge"] < -5][:12]   # strong unders
+            "ev_unders": [p for p in top_under if p["edge"] < -5][:12]
         }
 
         os.makedirs("data", exist_ok=True)
@@ -214,7 +219,7 @@ def run_daily_scrape(output_path=None):
             json.dump(report, f, indent=2)
 
         create_cheatsheet(top_over, top_under)
-        logger.info("✅ Full report with line, proj, edge, multi-game slips & unders")
+        logger.info("✅ Report with line/proj/edge + multi-stat slips for remaining game")
         return report
     except Exception as e:
         logger.error(f"Scrape failed: {e}", exc_info=True)
