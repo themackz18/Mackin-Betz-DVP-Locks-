@@ -16,6 +16,7 @@
         body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; margin: 0; padding: 0; }
         header { background: linear-gradient(90deg, #1a0033, #330066); padding: 25px 20px; text-align: center; position: relative; }
         h1 { margin: 0; color: var(--gold); font-size: 2.4rem; letter-spacing: 3px; }
+        .flame-canvas { position: absolute; top: 15px; right: 20px; width: 90px; height: 90px; }
         .tabs { display: flex; overflow-x: auto; background: #111; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border); }
         .tab { padding: 16px 22px; cursor: pointer; white-space: nowrap; font-weight: 500; }
         .tab.active { background: var(--accent); color: white; }
@@ -30,6 +31,7 @@
 </head>
 <body>
     <header>
+        <canvas id="flame" class="flame-canvas"></canvas>
         <h1>MACKIN BETZ</h1>
         <p style="margin: 8px 0 0; opacity: 0.9;">DVP Locks • NBA Props</p>
         <button onclick="exportReport()" class="export-btn">📤 Export Report (JSON)</button>
@@ -51,6 +53,32 @@
     <script>
         let reportData = {};
 
+        // Flame / smoke logo animation (your old style - glowing yellow/orange particles)
+        const canvas = document.getElementById('flame');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        function createParticle() {
+            return { x: canvas.width/2 + (Math.random()*20-10), y: canvas.height - 10, size: Math.random()*7 + 5, speed: Math.random()*3.5 + 2.5, opacity: 1, hue: 30 + Math.random()*40 };
+        }
+        function animateFlame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (Math.random() < 0.7) particles.push(createParticle());
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.y -= p.speed;
+                p.opacity -= 0.028;
+                p.size *= 0.985;
+                ctx.fillStyle = `hsla(${p.hue}, 100%, 65%, ${p.opacity})`;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                if (p.opacity <= 0) particles.splice(i, 1);
+            }
+            requestAnimationFrame(animateFlame);
+        }
+        canvas.width = 90; canvas.height = 90;
+        animateFlame();
+
         async function loadReport() {
             try {
                 const res = await fetch('/api/report');
@@ -58,7 +86,6 @@
                 renderCurrentPane('p4s');
             } catch (e) {
                 console.error("Failed to load report", e);
-                document.getElementById('pane-content').innerHTML = '<p style="text-align:center; color:#f87171; padding:40px;">Error loading data.<br>Try clicking Refresh Report.</p>';
             }
         }
 
@@ -87,15 +114,14 @@
                 return;
             }
 
-            // YOUR ORIGINAL PANE CODE GOES HERE
-            // Paste your original rendering functions for P4s, Slips, Leaders, etc. below this line
-            // For example: renderP4s(), renderLeaders(), etc. that use the player_card macro
-            content.innerHTML = `<div style="text-align:center; padding:80px 20px; color:#94a3b8;">${pane} tab content loading...<br><br>Your original pane rendering code should go here.</div>`;
+            // Your original panes render here (P4s, Leaders, etc.)
+            // Replace the line below with your original rendering code if needed
+            content.innerHTML = `<div style="text-align:center; padding:40px; color:#94a3b8;">${pane} content loaded from reportData</div>`;
         }
 
         function exportReport() {
             if (!reportData || Object.keys(reportData).length === 0) {
-                alert("No report loaded yet. Click Refresh Report first.");
+                alert("Refresh the report first.");
                 return;
             }
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(reportData, null, 2));
@@ -111,6 +137,9 @@
             setupTabs();
             loadReport();
         };
+
+        // Optional auto-refresh
+        setInterval(loadReport, 300000);
     </script>
 </body>
 </html>
