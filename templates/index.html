@@ -10,34 +10,33 @@
             --card: #141414;
             --text: #f1f1f1;
             --gold: #ffd700;
+            --accent: #c026d3;
             --border: #333;
         }
-        body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; margin: 0; padding: 0; }
-        header { background: linear-gradient(90deg, #1a0033, #330066); padding: 20px; text-align: center; }
-        .cheatsheet-container { text-align: center; margin: 20px 0; }
-        .cheatsheet-container img { max-width: 100%; max-height: 520px; border-radius: 16px; border: 2px solid var(--gold); box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
-        .tabs { display: flex; overflow-x: auto; background: #111; position: sticky; top: 0; z-index: 10; }
-        .tab { padding: 14px 20px; cursor: pointer; white-space: nowrap; }
-        .tab.active { background: var(--gold); color: #000; font-weight: bold; }
+        body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; margin: 0; padding: 0; line-height: 1.5; }
+        header { background: linear-gradient(90deg, #1a0033, #330066); padding: 20px; text-align: center; position: relative; }
+        .flame-canvas { position: absolute; top: 10px; right: 20px; width: 80px; height: 80px; }
+        h1 { margin: 0; color: var(--gold); font-size: 2.2rem; }
+        .tabs { display: flex; overflow-x: auto; background: #111; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid var(--border); }
+        .tab { padding: 16px 24px; cursor: pointer; white-space: nowrap; font-weight: 500; }
+        .tab.active { background: var(--accent); color: white; }
         .content { padding: 20px; }
-        .player-row { display: flex; align-items: center; background: var(--card); margin-bottom: 12px; border-radius: 12px; padding: 12px; }
-        .confidence { background: #22c55e; color: #000; padding: 4px 10px; border-radius: 9999px; font-size: 0.85rem; font-weight: bold; }
-        .pick-pill { padding: 4px 12px; border-radius: 9999px; font-size: 0.85rem; font-weight: bold; }
-        .slip-builder-pool { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
-        .search { width: 100%; padding: 12px; margin-bottom: 15px; background: #222; border: none; border-radius: 8px; color: white; }
+        .player-row { display: flex; align-items: center; background: var(--card); margin-bottom: 12px; border-radius: 12px; padding: 14px; border: 1px solid var(--border); }
+        .player-info { flex: 1; }
+        .confidence { background: #22c55e; color: #000; padding: 4px 12px; border-radius: 9999px; font-size: 0.85rem; font-weight: bold; }
+        .pick-pill { padding: 4px 14px; border-radius: 9999px; font-size: 0.85rem; font-weight: bold; }
+        .export-btn { background: var(--gold); color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .export-btn:hover { background: #ffed4e; }
+        .cheatsheet-tab img { max-width: 100%; border-radius: 16px; border: 3px solid var(--gold); box-shadow: 0 10px 30px rgba(192, 38, 211, 0.3); }
     </style>
 </head>
 <body>
     <header>
-        <h1 style="margin:0; color:var(--gold);">MACKIN BETZ</h1>
-        <p style="margin:4px 0 0; opacity:0.9;">DVP Locks • NBA Props</p>
+        <canvas id="flame" class="flame-canvas"></canvas>
+        <h1>MACKIN BETZ</h1>
+        <p>DVP Locks • NBA Props</p>
+        <button onclick="exportReport()" class="export-btn">📤 Export Report (JSON)</button>
     </header>
-
-    <!-- COMPACT CHEATSHEET -->
-    <div class="cheatsheet-container">
-        <h3 style="color:var(--gold); margin-bottom:8px;">📊 Mackin Cheatsheet</h3>
-        <img src="/data/mackin_cheatsheet.png" alt="Mackin Cheatsheet" id="cheatsheet-img">
-    </div>
 
     <div class="tabs" id="tabs">
         <div class="tab active" data-pane="p4s">Today's P4s</div>
@@ -47,70 +46,106 @@
         <div class="tab" data-pane="value">Value Plays</div>
         <div class="tab" data-pane="unders">+EV Unders</div>
         <div class="tab" data-pane="builder">Slip Builder</div>
+        <div class="tab" data-pane="cheatsheet">Cheatsheet</div>
     </div>
 
-    <div class="content">
-        <!-- All panes are rendered via JS from /api/report -->
-        <div id="pane-content"></div>
+    <div class="content" id="pane-content">
+        <!-- Dynamic panes rendered by JS -->
     </div>
 
     <script>
         let reportData = {};
 
-        async function loadReport() {
-            const res = await fetch('/api/report');
-            reportData = await res.json();
-            renderAll();
+        // Flame logo animation (your original)
+        const canvas = document.getElementById('flame');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        function createParticle() {
+            return { x: canvas.width/2, y: canvas.height, size: Math.random()*6+4, speed: Math.random()*3+2, opacity: 1 };
         }
-
-        function renderAll() {
-            // (Your existing tab rendering code stays - just the Slip Builder and player cards are updated below)
-            renderBuilderPool();
-            // ... other render functions you already have
+        function animateFlame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (Math.random() < 0.6) particles.push(createParticle());
+            for (let i = particles.length-1; i >= 0; i--) {
+                let p = particles[i];
+                p.y -= p.speed;
+                p.opacity -= 0.03;
+                ctx.fillStyle = `rgba(255, ${100 + Math.random()*155}, 0, ${p.opacity})`;
+                ctx.beginPath();
+                ctx.arc(p.x + Math.random()*8-4, p.y, p.size, 0, Math.PI*2);
+                ctx.fill();
+                if (p.opacity <= 0) particles.splice(i, 1);
+            }
+            requestAnimationFrame(animateFlame);
         }
+        canvas.width = 80; canvas.height = 80;
+        animateFlame();
 
-        // IMPROVED SLIP BUILDER - now has players + upcoming filter
-        function renderBuilderPool() {
-            const container = document.getElementById('builder-pool') || document.createElement('div');
-            container.innerHTML = `
-                <input type="text" id="builder-search" class="search" placeholder="Search players..." onkeyup="filterBuilderPool()">
-                <div class="slip-builder-pool" id="builder-pool-inner"></div>
-            `;
-            document.getElementById('pane-content').appendChild(container); // adjust if needed
-
-            const pool = [...(reportData.top_locks || []), ...(reportData.value_plays || [])];
-            const inner = document.getElementById('builder-pool-inner');
-
-            pool.forEach(p => {
-                const div = document.createElement('div');
-                div.className = 'player-row';
-                div.innerHTML = `
-                    <div style="flex:1">
-                        <strong>${p.name}</strong> ${p.stat}<br>
-                        <span class="pick-pill" style="background:${p.recommended_pick==='OVER'?'#22c55e':'#ef4444'};color:#000">
-                            ${p.recommended_pick} ${p.line}
-                        </span>
-                    </div>
-                    <div style="text-align:right">
-                        <span class="confidence">${p.confidence}/10</span><br>
-                        <small>${p.hit_rate}% hit</small>
-                    </div>
-                `;
-                div.onclick = () => togglePlayer(p);
-                inner.appendChild(div);
+        // Tab switching
+        function setupTabs() {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    renderCurrentPane(tab.getAttribute('data-pane'));
+                });
             });
         }
 
-        // Your existing togglePlayer / selectedPlayers logic stays the same
-
-        function filterBuilderPool() {
-            // simple search filter - works on the pool
-            const term = document.getElementById('builder-search').value.toLowerCase();
-            // ... filter and re-render inner pool
+        async function loadReport() {
+            try {
+                const res = await fetch('/api/report');
+                reportData = await res.json();
+                renderCurrentPane('p4s'); // default tab
+            } catch(e) {
+                console.error("Failed to load report", e);
+            }
         }
 
-        // Load on start
-        window.onload = loadReport;
+        function renderCurrentPane(pane) {
+            const content = document.getElementById('pane-content');
+            content.innerHTML = ''; // clear
+
+            if (pane === 'cheatsheet') {
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 20px;">
+                        <h2 style="color: var(--gold);">📊 Mackin Cheatsheet</h2>
+                        <img src="/data/mackin_cheatsheet.png" alt="Cheatsheet" class="cheatsheet-tab" style="margin-top: 15px;">
+                        <p style="margin-top: 12px; opacity: 0.8;">Generated: ${reportData.generated_at || 'Just now'}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // TODO: Add your original rendering logic for other panes here
+            // (P4s, Slips, Leaders, Locks, Value, Unders, Builder)
+            // Use reportData.top_locks, reportData.category_leaders, etc.
+            // Player cards should include: confidence, hit_rate, recommended_pick
+            content.innerHTML = `<p style="text-align:center; padding:40px;">Rendering ${pane} tab... (add your original pane code here)</p>`;
+        }
+
+        function exportReport() {
+            if (!reportData || Object.keys(reportData).length === 0) {
+                alert("No report data yet. Refresh first.");
+                return;
+            }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(reportData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "mackin_report.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        // Initialize
+        window.onload = () => {
+            setupTabs();
+            loadReport();
+        };
+
+        // Auto refresh every 5 min
+        setInterval(loadReport, 300000);
     </script>
 </body>
 </html>
