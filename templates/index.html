@@ -266,12 +266,12 @@
 </header>
 
 <!-- ==================== CHEATSHEET IMAGE ==================== -->
-<div style="text-align: center; margin: 20px 0 30px; padding: 0 16px;">
+<div style="text-align: center; margin: 25px 0 35px; padding: 0 16px;">
     <h3 style="color: var(--gold); margin-bottom: 12px;">📊 Mackin Cheatsheet</h3>
     <img src="/data/mackin_cheatsheet.png" 
          alt="Mackin Bets Cheatsheet" 
          style="max-width: 100%; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
-    <p style="font-size: 0.8rem; color: var(--muted); margin-top: 10px;">
+    <p style="font-size: 0.82rem; color: var(--muted); margin-top: 10px;">
         Generated: {{ report.generated_at | default('Unknown') }}
     </p>
 </div>
@@ -299,7 +299,7 @@
             {% endif %}
         </div>
         <div class="stats-line">
-            PTS {{ p.pts | default(0) }} | REB {{ p.reb | default(0) }} | AST {{ p.ast | default(0) }} | 3PM {{ p.threepm | default(0) }}{% if p.opp %} &nbsp;• vs {{ p.opp }}{% endif %}
+            PTS {{ p.pts | default(0) }} | REB {{ p.reb | default(0) }} | AST {{ p.ast | default(0) }}{% if p.opp %} • vs {{ p.opp }}{% endif %}
         </div>
         {% if p.confidence %}
         {% set c = p.confidence | int %}
@@ -313,24 +313,6 @@
             {% if p.l5_pra %}
             <div class="data-pills">
                 <div class="pill">L5 PRA <span>{{ p.l5_pra }}</span></div>
-                {% if p.l5_pts %}<div class="pill">L5 PTS <span>{{ p.l5_pts }}</span></div>{% endif %}
-                {% if p.l5_reb %}<div class="pill">L5 REB <span>{{ p.l5_reb }}</span></div>{% endif %}
-                {% if p.l5_ast %}<div class="pill">L5 AST <span>{{ p.l5_ast }}</span></div>{% endif %}
-            </div>
-            {% endif %}
-            {% if p.h2h_pra %}
-            <div class="data-pills">
-                <div class="pill">H2H PRA <span>{{ p.h2h_pra }}</span></div>
-                {% if p.h2h_pts %}<div class="pill">H2H PTS <span>{{ p.h2h_pts }}</span></div>{% endif %}
-                <div class="pill">in <span>{{ p.h2h_games }} G</span></div>
-            </div>
-            {% endif %}
-            {% if p.pp_line or p.ud_line or p.dk_line or p.fd_line %}
-            <div class="lines-row">
-                {% if p.pp_line %}<div class="line-pill"><span class="book">PP</span>{{ p.pp_line }}</div>{% endif %}
-                {% if p.ud_line %}<div class="line-pill"><span class="book">UD</span>{{ p.ud_line }}</div>{% endif %}
-                {% if p.dk_line %}<div class="line-pill"><span class="book">DK</span>{{ p.dk_line }}</div>{% endif %}
-                {% if p.fd_line %}<div class="line-pill"><span class="book">FD</span>{{ p.fd_line }}</div>{% endif %}
             </div>
             {% endif %}
         {% endif %}
@@ -367,7 +349,7 @@
             <div class="sub-title">{{ size }}-Leg Slips</div>
             {% for slip in slip_list %}
             <div class="card">
-                <div class="slip-header">Total Proj: <strong>{{ slip.total_proj | default('N/A') }}</strong> &nbsp;•&nbsp; Target: <strong>{{ slip.target_prop | default('PRA') }}</strong></div>
+                <div class="slip-header">Total Proj: <strong>{{ slip.total_proj | default('N/A') }}</strong></div>
                 {% for p in slip.players | default([]) %}{{ player_card(p, compact=true) }}{% endfor %}
             </div>
             {% endfor %}
@@ -390,9 +372,8 @@
                 <div style="flex:1;">
                     <span class="player-name">{{ p.name | default('Player') }}</span>
                     <span class="prop-tag">{{ p.target_prop | default('PRA') }}</span>
-                    {% if p.matchup_grade %}<span class="grade-badge" style="color:{{ p.matchup_grade.color }}">{{ p.matchup_grade.grade }}</span>{% endif %}
                 </div>
-                <div class="leader-val">{{ cat.category }}: {{ p.best_val | default(p.proj) }}</div>
+                <div class="leader-val">{{ cat.category }}: {{ p.proj | default('N/A') }}</div>
             </div>
             {% endfor %}
         </div>
@@ -426,44 +407,27 @@
 <div id="pane-unders" class="pane">
     <div class="section-title">+EV Unders 🔻</div>
     <p style="color:var(--muted); font-size:0.82rem; margin-bottom:16px;">
-        Our projection is meaningfully below the posted line. Higher edge % = stronger under value.
+        Our projection is meaningfully below the posted line.
     </p>
-    <div class="filter-bar" id="ev-filters">
-        <button class="filter-btn active" data-filter="all">All Books</button>
-        <button class="filter-btn" data-filter="PrizePicks">PrizePicks</button>
-        <button class="filter-btn" data-filter="Underdog">Underdog</button>
-        <button class="filter-btn" data-filter="DraftKings">DraftKings</button>
-        <button class="filter-btn" data-filter="FanDuel">FanDuel</button>
-    </div>
     {% if report.ev_unders and report.ev_unders|length > 0 %}
     <div id="ev-list">
         {% for ev in report.ev_unders %}
-        <div class="ev-card" data-book="{{ ev.book | default('') }}">
-            <div style="flex:1; min-width:0;">
-                <div>
-                    <span class="player-name">{{ ev.name | default('Player') }}</span>
-                    <span class="ev-book-tag">{{ ev.book | default('') }}</span>
-                    {% if ev.grade %}<span class="grade-badge" style="color:#10b981; font-size:0.7rem;">{{ ev.grade }}</span>{% endif %}
-                </div>
-                <div class="ev-nums" style="margin-top:4px;">
-                    <strong>{{ ev.stat | default('PTS') }}</strong>
-                    &nbsp;•&nbsp; Line: <strong>{{ ev.line | default('?') }}</strong>
-                    &nbsp;•&nbsp; Our Proj: <strong style="color:var(--green);">{{ ev.our_proj | default('?') }}</strong>
-                </div>
-                <div class="stats-line" style="margin-top:3px;">
-                    {{ ev.team | default('') }} vs {{ ev.opp | default('') }}
-                    &nbsp;•&nbsp; DVP: {{ ev.dvp | default(0) }}
-                    &nbsp;•&nbsp; Conf: {{ ev.confidence | default('?') }}/10
+        <div class="ev-card">
+            <div style="flex:1;">
+                <span class="player-name">{{ ev.name | default('Player') }}</span>
+                <div class="ev-nums">
+                    <strong>{{ ev.stat | default('PTS') }}</strong> • Line: <strong>{{ ev.line | default('?') }}</strong> 
+                    • Proj: <strong style="color:var(--green);">{{ ev.our_proj | default('?') }}</strong>
                 </div>
             </div>
-            <div style="text-align:right; flex-shrink:0;">
+            <div style="text-align:right;">
                 <div class="ev-edge">↓{{ ev.edge_pct | default(0) }}%</div>
             </div>
         </div>
         {% endfor %}
     </div>
     {% else %}
-        <p class="empty-msg">No +EV unders found — lines may not be posted yet.</p>
+        <p class="empty-msg">No +EV unders found yet.</p>
     {% endif %}
 </div>
 
@@ -499,22 +463,6 @@
             tab.classList.add('active');
             var pane = document.getElementById(tab.getAttribute('data-pane'));
             if (pane) pane.classList.add('active');
-        });
-    });
-})();
-
-// EV FILTER BAR
-(function () {
-    var btns  = document.querySelectorAll('#ev-filters .filter-btn');
-    var cards = document.querySelectorAll('#ev-list .ev-card');
-    btns.forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            btns.forEach(function (b) { b.classList.remove('active'); });
-            btn.classList.add('active');
-            var f = btn.getAttribute('data-filter');
-            cards.forEach(function (card) {
-                card.style.display = (f === 'all' || card.getAttribute('data-book') === f) ? '' : 'none';
-            });
         });
     });
 })();
@@ -558,11 +506,8 @@ function renderBuilderPool() {
     candidates.forEach(function (p) {
         var chip = document.createElement('div');
         chip.className = 'builder-chip';
-        var mg = p.matchup_grade || {};
-        var gradeHtml = mg.grade ? (' <span style="color:' + mg.color + '; font-size:0.7rem;">' + mg.grade + '</span>') : '';
-        chip.innerHTML = '<strong>' + p.name + '</strong>' + gradeHtml +
-            ' <span style="color:var(--muted);font-size:0.72rem;">' + (p.target_prop || 'PRA') +
-            ' · DVP ' + (p.dvp || 0) + ' · ' + (p.confidence || '?') + '/10</span>';
+        chip.innerHTML = '<strong>' + p.name + '</strong> <span style="color:var(--muted);font-size:0.72rem;">' + 
+                         (p.target_prop || 'PRA') + ' · DVP ' + (p.dvp || 0) + ' · ' + (p.confidence || '?') + '/10</span>';
         if (selectedPlayers.some(function (s) { return s.name === p.name; }))
             chip.classList.add('selected');
         chip.addEventListener('click', function () { togglePlayer(p, chip); });
@@ -572,8 +517,13 @@ function renderBuilderPool() {
 
 function togglePlayer(player, chip) {
     var idx = selectedPlayers.findIndex(function (p) { return p.name === player.name; });
-    if (idx > -1) { selectedPlayers.splice(idx, 1); chip.classList.remove('selected'); }
-    else if (selectedPlayers.length < 5) { selectedPlayers.push(player); chip.classList.add('selected'); }
+    if (idx > -1) {
+        selectedPlayers.splice(idx, 1);
+        chip.classList.remove('selected');
+    } else if (selectedPlayers.length < 5) {
+        selectedPlayers.push(player);
+        chip.classList.add('selected');
+    }
     updateSlipSummary();
 }
 
@@ -583,15 +533,8 @@ function updateSlipSummary() {
         container.innerHTML = '<p class="empty-msg">No players selected.</p>';
     } else {
         container.innerHTML = selectedPlayers.map(function (p) {
-            var mg = p.matchup_grade || {};
-            var gradeHtml = mg.grade ? ('<span class="grade-badge" style="color:' + mg.color + '; font-size:0.7rem; margin-left:5px;">' + mg.grade + '</span>') : '';
-            var c = p.confidence || 5;
-            var cc = c >= 8 ? '#10b981' : (c >= 6 ? '#84cc16' : (c >= 4 ? '#f59e0b' : '#ef4444'));
             return '<div class="player-row" style="margin-bottom:6px;">' +
-                '<div style="flex:1;"><span class="player-name">' + p.name + '</span>' +
-                '<span class="prop-tag">' + (p.target_prop || 'PRA') + '</span>' + gradeHtml +
-                '<div class="conf-wrap"><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:' + (c * 10) + '%;background:' + cc + ';"></div></div>' +
-                '<span class="conf-label">' + c + '/10</span></div></div>' +
+                '<div style="flex:1;"><span class="player-name">' + p.name + '</span></div>' +
                 '<div style="text-align:right; color:var(--gold);">' + (p.proj || 'N/A') + ' proj</div></div>';
         }).join('');
     }
@@ -603,7 +546,9 @@ function updateSlipSummary() {
 }
 
 function clearSlip() {
-    selectedPlayers = []; updateSlipSummary(); renderBuilderPool();
+    selectedPlayers = [];
+    updateSlipSummary();
+    renderBuilderPool();
 }
 
 renderBuilderPool();
