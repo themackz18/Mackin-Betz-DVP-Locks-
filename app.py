@@ -9,10 +9,10 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# Load from local file (the one you uploaded)
-CSV_PATH = "Data/fallback.csv"   # capital D as in your screenshot
+# Lowercase as you said
+CSV_PATH = "data/fallback.csv"
 
-def build_report_from_csv():
+def build_report():
     if not os.path.exists(CSV_PATH):
         logger.error(f"CSV not found at {CSV_PATH}")
         return {
@@ -26,7 +26,7 @@ def build_report_from_csv():
 
     try:
         df = pd.read_csv(CSV_PATH)
-        logger.info(f"Loaded {len(df)} rows from local {CSV_PATH}")
+        logger.info(f"Loaded {len(df)} rows from local data/fallback.csv")
     except Exception as e:
         logger.error(f"Failed to read CSV: {e}")
         return {"generated_at": datetime.now().isoformat(), "game_count": 0, "top_overs": [], "top_locks": [], "value_plays": [], "slips": {"2": []}}
@@ -54,7 +54,7 @@ def build_report_from_csv():
         except:
             continue
 
-    report = {
+    return {
         "generated_at": datetime.now().isoformat(),
         "game_count": len(df),
         "top_overs": props,
@@ -62,16 +62,14 @@ def build_report_from_csv():
         "value_plays": props[:12],
         "slips": {"2": []}
     }
-    return report
 
 @app.route("/")
 def index():
-    report = build_report_from_csv()
+    report = build_report()
     return render_template("index.html", report=report)
 
 @app.route("/refresh")
 def refresh():
-    logger.info("Refresh requested - reloading local CSV")
     return redirect("/")
 
 if __name__ == "__main__":
