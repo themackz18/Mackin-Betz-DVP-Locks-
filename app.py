@@ -1,114 +1,62 @@
 import os
-import pandas as pd
+import json
 import logging
+import requests
 from datetime import datetime
-from flask import Flask, render_template, redirect
+from flask import Flask, render_template, redirect, url_for
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+APIFY_TOKEN = os.getenv("APIFY_TOKEN", "")
+ACTOR_ID = "zen-studio~prizepicks-player-props"
+DATA_DIR = "data"
+
 app = Flask(__name__)
 
-CSV_PATH = "data/fallback.csv"
-
-def build_report():
-    if not os.path.exists(CSV_PATH):
-        logger.error(f"CSV not found at {CSV_PATH}")
-        return get_empty_report()
-
+def fetch_from_apify():
+    if not APIFY_TOKEN:
+        return []
+    url = f"https://api.apify.com/v2/acts/{ACTOR_ID}/run-sync-get-dataset-items?token={APIFY_TOKEN}&timeout=300"
+    payload = {"leagues": ["NBA"]}
     try:
-        df = pd.read_csv(CSV_PATH)
-        logger.info(f"Loaded {len(df)} rows from CSV")
+        resp = requests.post(url, json=payload, timeout=300)
+        if resp.status_code not in (200, 201):
+            logger.error(f"Apify status {resp.status_code}")
+            return []
+        return resp.json()
     except Exception as e:
-        logger.error(f"Failed to read CSV: {e}")
-        return get_empty_report()
+        logger.error(f"Apify error: {e}")
+        return []
 
-    props = []
-    for _, row in df.iterrows():
-        try:
-            name = str(row.get("Name", "")).strip()
-            if not name:
-                continue
-            proj = float(row.get("Projection", 0) or 0)
-            opp = str(row.get("Opp", "N/A")).strip()
-
-            for stat in ["PTS", "REB", "AST"]:
-                line = proj
-                if line < 2:
-                    continue
-                props.append({
-                    "name": name,
-                    "stat": stat,
-                    "line": round(line, 1),
-                    "proj": round(proj, 1),
-                    "confidence": 6,
-                    "recommended_pick": "OVER",
-                    "matchup_grade": {"grade": "B"},
-                    "pts": round(proj, 1),
-                    "reb": round(proj * 0.3, 1),
-                    "ast": round(proj * 0.25, 1),
-                    "target_prop": stat,
-                    "dvp": 18.0,
-                    "l5_pra": round(proj * 1.55, 1),
-                    "opp": opp
-                })
-        except:
-            continue
-
-    p4_games = []
-    if props:
-        p4_games.append({
-            "game": "Power4 Slate",
-            "alpha": props[:4]
-        })
+def get_report():
+    os.makedirs(DATA_DIR, exist_ok=True)
+    raw_props = fetch_from_apify()
+    total = len(raw_props)
 
     report = {
+        "total_props": total,
         "generated_at": datetime.now().isoformat(),
-        "game_count": len(df),
-        "same_game_p4": p4_games,
-        "category_leaders": [
-            {"category": "PTS", "players": props[:8]},
-            {"category": "REB", "players": props[8:16]},
-            {"category": "AST", "players": props[16:24]}
-        ],
-        "top_locks": props[:15],
-        "value_plays": props[:15],
-        "top_overs": props,
-        "top_unders": [],
-        "ev_unders": [],
-        "slips": {
-            "2": [{"players": props[:2], "total_proj": 55.0, "target_prop": "PRA"}],
-            "3": [],
-            "4": [],
-            "5": []
+        "leagues": {
+            "NBA": {
+                "display_name": "NBA",
+                "prop_count": total,
+                "top_props": raw_props[:50] if raw_props else []  # First 50 for display
+            }
         }
     }
     return report
 
-def get_empty_report():
-    return {
-        "generated_at": datetime.now().isoformat(),
-        "game_count": 0,
-        "same_game_p4": [],
-        "category_leaders": [],
-        "top_locks": [],
-        "value_plays": [],
-        "top_overs": [],
-        "top_unders": [],
-        "ev_unders": [],
-        "slips": {"2": [], "3": [], "4": [], "5": []}
-    }
-
 @app.route("/")
 def index():
-    report = build_report()
+    report = get_report()
     return render_template("index.html", report=report)
 
 @app.route("/refresh")
 def refresh():
-    logger.info("Refresh requested - reloading CSV")
+    get_report()
     return redirect("/")
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
+    port = int(os.environ.get("PORT", 8081))
     app.run(host="0.0.0.0", port=port)
