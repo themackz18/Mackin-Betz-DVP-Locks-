@@ -1,4 +1,4 @@
-import os
+limport os
 import pandas as pd
 import logging
 from datetime import datetime
@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-CSV_PATH = "data/fallback.csv"   # lowercase as you confirmed
+CSV_PATH = "data/fallback.csv"
 
 def build_report():
     if not os.path.exists(CSV_PATH):
@@ -50,15 +50,25 @@ def build_report():
                     "ast": round(proj * 0.25, 1),
                     "target_prop": stat,
                     "dvp": 18.0,
-                    "l5_pra": round(proj * 1.55, 1)
+                    "l5_pra": round(proj * 1.55, 1),
+                    "opp": opp
                 })
         except:
             continue
 
+    # Build simple Same-Game Power4s (group by team or just repeat top players)
+    p4_games = []
+    if props:
+        # Simple version: one "game" with top 4 players
+        p4_games.append({
+            "game": "Power4 Slate",
+            "alpha": props[:4]   # top 4 players for P4
+        })
+
     report = {
         "generated_at": datetime.now().isoformat(),
         "game_count": len(df),
-        "same_game_p4": [],
+        "same_game_p4": p4_games,
         "category_leaders": [
             {"category": "PTS", "players": props[:8]},
             {"category": "REB", "players": props[8:16]},
