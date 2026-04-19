@@ -9,28 +9,27 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# Use the exact path from your screenshot (capital D)
-CSV_URL = "https://raw.githubusercontent.com/themackz18/Mackin-Betz-DVP-Locks/main/Data/fallback.csv"
+# Load from local file (the one you uploaded)
+CSV_PATH = "Data/fallback.csv"   # capital D as in your screenshot
 
 def build_report_from_csv():
-    try:
-        df = pd.read_csv(CSV_URL)
-        logger.info(f"Loaded {len(df)} rows from fallback.csv")
-    except Exception as e:
-        logger.error(f"Failed to load CSV: {e}")
-        # Safe empty report so template doesn't crash
+    if not os.path.exists(CSV_PATH):
+        logger.error(f"CSV not found at {CSV_PATH}")
         return {
             "generated_at": datetime.now().isoformat(),
             "game_count": 0,
             "top_overs": [],
             "top_locks": [],
             "value_plays": [],
-            "slips": {"2": []},
-            "same_game_p4": [],
-            "category_leaders": [],
-            "top_unders": [],
-            "ev_unders": []
+            "slips": {"2": []}
         }
+
+    try:
+        df = pd.read_csv(CSV_PATH)
+        logger.info(f"Loaded {len(df)} rows from local {CSV_PATH}")
+    except Exception as e:
+        logger.error(f"Failed to read CSV: {e}")
+        return {"generated_at": datetime.now().isoformat(), "game_count": 0, "top_overs": [], "top_locks": [], "value_plays": [], "slips": {"2": []}}
 
     props = []
     for _, row in df.iterrows():
@@ -39,9 +38,6 @@ def build_report_from_csv():
             if not name:
                 continue
             proj = float(row.get("Projection", 0) or 0)
-            team = str(row.get("Team", "N/A")).strip()
-            opp = str(row.get("Opp", "N/A")).strip()
-
             for stat in ["PTS", "REB", "AST"]:
                 line = proj
                 if line < 2:
@@ -64,11 +60,7 @@ def build_report_from_csv():
         "top_overs": props,
         "top_locks": props[:15],
         "value_plays": props[:12],
-        "slips": {"2": []},
-        "same_game_p4": [],
-        "category_leaders": [],
-        "top_unders": [],
-        "ev_unders": []
+        "slips": {"2": []}
     }
     return report
 
@@ -79,7 +71,7 @@ def index():
 
 @app.route("/refresh")
 def refresh():
-    logger.info("Refresh requested - reloading CSV")
+    logger.info("Refresh requested - reloading local CSV")
     return redirect("/")
 
 if __name__ == "__main__":
