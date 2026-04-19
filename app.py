@@ -9,7 +9,8 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-CSV_URL = "https://raw.githubusercontent.com/themackz18/Mackin-Betz-DVP-Locks/main/data/fallback.csv"
+# Use the exact path from your screenshot (capital D)
+CSV_URL = "https://raw.githubusercontent.com/themackz18/Mackin-Betz-DVP-Locks/main/Data/fallback.csv"
 
 def build_report_from_csv():
     try:
@@ -17,7 +18,19 @@ def build_report_from_csv():
         logger.info(f"Loaded {len(df)} rows from fallback.csv")
     except Exception as e:
         logger.error(f"Failed to load CSV: {e}")
-        df = pd.DataFrame()
+        # Safe empty report so template doesn't crash
+        return {
+            "generated_at": datetime.now().isoformat(),
+            "game_count": 0,
+            "top_overs": [],
+            "top_locks": [],
+            "value_plays": [],
+            "slips": {"2": []},
+            "same_game_p4": [],
+            "category_leaders": [],
+            "top_unders": [],
+            "ev_unders": []
+        }
 
     props = []
     for _, row in df.iterrows():
