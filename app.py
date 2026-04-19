@@ -1,8 +1,6 @@
 import os
 import pandas as pd
-import json
 import logging
-import requests
 from datetime import datetime
 from flask import Flask, render_template, redirect
 
@@ -32,7 +30,7 @@ def build_report_from_csv():
             opp = str(row.get("Opp", "N/A")).strip()
 
             for stat in ["PTS", "REB", "AST"]:
-                line = proj  # fallback line = projection for now
+                line = proj
                 if line < 2:
                     continue
                 props.append({
@@ -41,7 +39,8 @@ def build_report_from_csv():
                     "line": round(line, 1),
                     "proj": round(proj, 1),
                     "confidence": 6,
-                    "recommended_pick": "OVER"
+                    "recommended_pick": "OVER",
+                    "matchup_grade": {"grade": "B"}
                 })
         except:
             continue
