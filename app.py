@@ -1,4 +1,4 @@
-limport os
+import os
 import pandas as pd
 import logging
 from datetime import datetime
@@ -30,7 +30,6 @@ def build_report():
             if not name:
                 continue
             proj = float(row.get("Projection", 0) or 0)
-            team = str(row.get("Team", "N/A")).strip()
             opp = str(row.get("Opp", "N/A")).strip()
 
             for stat in ["PTS", "REB", "AST"]:
@@ -56,13 +55,11 @@ def build_report():
         except:
             continue
 
-    # Build simple Same-Game Power4s (group by team or just repeat top players)
     p4_games = []
     if props:
-        # Simple version: one "game" with top 4 players
         p4_games.append({
             "game": "Power4 Slate",
-            "alpha": props[:4]   # top 4 players for P4
+            "alpha": props[:4]
         })
 
     report = {
