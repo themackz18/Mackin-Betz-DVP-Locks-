@@ -16,7 +16,7 @@ APIFY_CSV   = os.getenv("APIFY_CSV", "data/apify_prizepicks.csv")
 OUTPUT_JSON = "data/mackin_report.json"
 OUTPUT_IMG  = "data/mackin_cheatsheet.png"
 
-SIM_RUNS = 2000   # Reduced from 5000 to save memory
+SIM_RUNS = 1000   # Reduced to save memory
 PAYOUTS = {4: 10, 6: 25, 8: 100}
 
 def load_prizepicks_lines():
@@ -106,17 +106,19 @@ def build_players(df, lines):
                 "l5_pra": round(base * 1.08, 1),
                 "matchup_grade": {"grade": "A" if dvp >= 20 else "B" if dvp >= 15 else "C", "color": "#10b981" if dvp >= 18 else "#f59e0b"}
             })
+            if len(players) > 150:   # Safety cap
+                break
     logger.info(f"Built {len(players)} props")
     return players
 
 def rank_props(players):
-    overs = sorted(players, key=lambda x: x["hit_rate"], reverse=True)[:60]
-    unders = sorted([p for p in players if p["edge"] < 0], key=lambda x: x["edge"])[:30]
+    overs = sorted(players, key=lambda x: x["hit_rate"], reverse=True)[:50]
+    unders = sorted([p for p in players if p["edge"] < 0], key=lambda x: x["edge"])[:25]
     return overs, unders
 
 def build_slips(players, size):
-    """Lightweight version to prevent OOM"""
-    candidates = sorted(players, key=lambda x: x["hit_rate"], reverse=True)[:25]  # Top 25 only
+    """Lightweight version - top candidates only"""
+    candidates = sorted(players, key=lambda x: x["hit_rate"], reverse=True)[:20]  # Only top 20
     slips = []
     for combo in combinations(candidates, size):
         names = [p["name"] for p in combo]
@@ -132,7 +134,7 @@ def build_slips(players, size):
             "ev": round(ev, 2),
             "target_prop": "PRA"
         })
-    return sorted(slips, key=lambda x: x["ev"], reverse=True)[:12]
+    return sorted(slips, key=lambda x: x["ev"], reverse=True)[:10]
 
 def create_cheatsheet(top_over, top_under):
     img = Image.new("RGB", (1050, 920), (20, 20, 28))
@@ -224,7 +226,7 @@ def run_daily_scrape():
             json.dump(report, f, indent=2)
 
         create_cheatsheet(top_over, top_under)
-        logger.info("✅ Report generated successfully")
+        logger.info("✅ Report generated successfully (memory optimized)")
         return report
     except Exception as e:
         logger.error(f"run_daily_scrape failed: {e}", exc_info=True)
