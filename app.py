@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from flask import Flask, render_template, redirect, url_for, send_from_directory
 
-# Import the processor (make sure processor.py is in the same folder)
+# Import processor
 from processor import run_daily_scrape, OUTPUT_JSON, OUTPUT_IMG, DATA_DIR
 
 logging.basicConfig(level=logging.INFO)
@@ -15,11 +15,11 @@ def get_report():
     os.makedirs(DATA_DIR, exist_ok=True)
     
     try:
-        # Run the local CSV processing (this replaces the old Apify call)
         report = run_daily_scrape()
-        logger.info("✅ Report successfully generated from uploaded CSV")
+        logger.info("✅ Report generated successfully from CSV data")
     except Exception as e:
-        logger.error(f"CSV processing failed: {e}", exc_info=True)
+        logger.error(f"Processing failed: {e}", exc_info=True)
+        # Safe fallback so template never crashes
         report = {
             "error": str(e),
             "generated_at": datetime.now().isoformat(),
@@ -30,16 +30,14 @@ def get_report():
             "value_plays": [],
             "ev_unders": [],
             "same_game_p4": [],
-            "slips": {},
+            "slips": {"2": [], "3": [], "4": [], "5": []},
             "category_leaders": []
         }
     
-    # Wrap for the template
-    web_report = {
+    return {
         "full_report": report,
         "generated_at": datetime.now().isoformat()
     }
-    return web_report
 
 @app.route("/")
 def index():
@@ -48,21 +46,13 @@ def index():
 
 @app.route("/refresh")
 def refresh():
-    # Re-process the CSV when user clicks Refresh
-    get_report()
+    get_report()  # Force fresh data
     return redirect("/")
 
 @app.route("/cheatsheet")
 def cheatsheet():
-    # Serve the generated cheatsheet image
     return send_from_directory(DATA_DIR, os.path.basename(OUTPUT_IMG), mimetype='image/png')
-
-@app.route("/api/report")
-def api_report():
-    # Optional: raw JSON endpoint
-    report = get_report()
-    return report["full_report"]
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=port)
