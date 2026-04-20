@@ -4,81 +4,191 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mackin Betz DVP Locks</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&amp;family=Barlow+Condensed:wght@400;600;700&amp;family=Barlow:wght@400;500&amp;display=swap" rel="stylesheet">
     <style>
         :root {
-            --black: #05040a; --deep: #0c0a14; --card: #1a1728; --border: #2a2444;
-            --purple: #7c3aed; --gold: #f5c518; --green: #10b981; --red: #ef4444;
-            --text: #e8e0f8; --muted: #6b6485;
+            --black: #05040a;
+            --deep: #0c0a14;
+            --card: #1a1728;
+            --border: #2a2444;
+            --purple: #7c3aed;
+            --gold: #f5c518;
+            --green: #10b981;
+            --red: #ef4444;
+            --text: #e8e0f8;
+            --muted: #6b6485;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Barlow', sans-serif; background: var(--black); color: var(--text); min-height: 100vh; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; padding: 14px; transition: all 0.2s; }
-        .card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
-        .live-badge { background: #10b981; color: #000; padding: 3px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; }
+        body {
+            font-family: 'Barlow', sans-serif;
+            background: var(--black);
+            color: var(--text);
+            line-height: 1.5;
+        }
+        header {
+            text-align: center;
+            padding: 32px 16px 20px;
+        }
+        .logo {
+            font-family: 'Cinzel Decorative', serif;
+            font-size: 2.8rem;
+            font-weight: 900;
+            letter-spacing: 4px;
+            background: linear-gradient(135deg, #f5c518, #9d5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .live-badge {
+            background: #10b981;
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-left: 8px;
+        }
+        .cheatsheet img {
+            max-width: 100%;
+            border-radius: 16px;
+            border: 2px solid var(--border);
+            margin: 20px auto;
+            display: block;
+        }
+        nav.tabs {
+            display: flex;
+            background: var(--deep);
+            overflow-x: auto;
+            border-bottom: 1px solid var(--border);
+            padding: 8px 0;
+            white-space: nowrap;
+        }
+        .tab {
+            padding: 14px 20px;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--muted);
+            transition: all 0.2s;
+        }
+        .tab.active {
+            color: var(--gold);
+            border-bottom: 3px solid var(--gold);
+            background: rgba(245, 197, 24, 0.1);
+        }
+        .pane {
+            display: none;
+            padding: 20px;
+        }
+        .pane.active {
+            display: block;
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 14px;
+            transition: all 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+        }
+        .stat-label {
+            margin-left: 8px;
+            padding: 2px 8px;
+            background: rgba(157, 92, 246, 0.2);
+            color: var(--purple);
+            font-size: 0.8rem;
+            border-radius: 4px;
+        }
+        .edge-positive { color: var(--green); }
+        .edge-negative { color: var(--red); }
     </style>
 </head>
 <body>
 
-<header style="text-align:center; padding: 30px 16px;">
-    <div style="font-family: 'Cinzel Decorative', serif; font-size: 2.8rem; font-weight: 900; letter-spacing: 4px; background: linear-gradient(135deg, #f5c518, #9d5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-        MACKIN BETZ
-    </div>
-    <div style="color: var(--muted);">DVP Locks • NBA Props Intelligence</div>
-    <div style="margin-top: 8px;">
-        <span class="live-badge">● LIVE</span> • Updated: {{ report.full_report.generated_at | default('Just now') }}
+<header>
+    <div class="logo">MACKIN BETZ</div>
+    <div style="color: var(--muted); font-size: 1.1rem;">DVP Locks • NBA Props Intelligence</div>
+    <div style="margin-top: 10px; font-size: 0.95rem;">
+        Updated: {{ report.full_report.generated_at | default('Just now') }}
+        <span class="live-badge">● LIVE</span>
     </div>
 </header>
 
-<img src="/cheatsheet" style="max-width:100%; display:block; margin: 20px auto; border-radius: 16px; border: 2px solid var(--border);">
+<!-- Cheatsheet -->
+<div class="cheatsheet">
+    <img src="/cheatsheet" alt="Mackin Cheatsheet">
+</div>
 
-<nav style="display:flex; background:var(--deep); overflow-x:auto; border-bottom:1px solid var(--border); padding: 8px 0;">
-    <div class="tab active" data-pane="pane-p4" style="padding:12px 16px; cursor:pointer; white-space:nowrap;">P4s</div>
-    <div class="tab" data-pane="pane-slips" style="padding:12px 16px; cursor:pointer; white-space:nowrap;">Slips</div>
-    <div class="tab" data-pane="pane-locks" style="padding:12px 16px; cursor:pointer; white-space:nowrap;">Locks</div>
-    <div class="tab" data-pane="pane-all" style="padding:12px 16px; cursor:pointer; white-space:nowrap;">All Props</div>
+<!-- Tabs -->
+<nav class="tabs">
+    <div class="tab active" data-pane="pane-p4">P4s</div>
+    <div class="tab" data-pane="pane-slips">Slips</div>
+    <div class="tab" data-pane="pane-locks">Top Locks</div>
+    <div class="tab" data-pane="pane-all">All Props</div>
 </nav>
 
 {% macro player_card(p) %}
 <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:start;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
         <div>
-            <strong>{{ p.name }}</strong> 
-            <span style="margin-left:8px; padding:2px 8px; background:rgba(157,92,246,0.2); color:var(--purple); font-size:0.8rem; border-radius:4px;">{{ p.stat }}</span>
+            <strong style="font-size: 1.1rem;">{{ p.name }}</strong>
+            <span class="stat-label">{{ p.stat }}</span>
         </div>
-        <div style="text-align:right;">
-            Proj <strong style="color:var(--green);">{{ p.proj }}</strong><br>
-            Edge <strong style="color:{% if p.edge > 0 %}var(--green){% else %}var(--red){% endif %};">{{ p.edge }}%</strong>
+        <div style="text-align: right; font-size: 0.95rem;">
+            Proj <strong>{{ p.proj }}</strong><br>
+            <span class="{% if p.edge > 0 %}edge-positive{% else %}edge-negative{% endif %}">
+                Edge {{ p.edge }}%
+            </span>
         </div>
     </div>
-    <div style="margin-top:6px; color:var(--muted); font-size:0.85rem;">
-        Line {{ p.line }} • Hit {{ p.hit_rate }}% • Conf {{ p.confidence }}/10
+    <div style="margin-top: 8px; color: var(--muted); font-size: 0.9rem;">
+        Line {{ p.line }} • Hit Rate {{ p.hit_rate }}% • Confidence {{ p.confidence }}/10
     </div>
+    {% if p.recommended_pick %}
+    <div style="margin-top: 6px; font-weight: 600; color: {% if p.recommended_pick == 'OVER' %}var(--green){% elif p.recommended_pick == 'UNDER' %}var(--red){% else %}var(--gold){% endif %};">
+        Recommended: {{ p.recommended_pick }}
+    </div>
+    {% endif %}
 </div>
 {% endmacro %}
 
-<div id="pane-p4" class="pane active" style="padding:20px;">
-    <h3 style="color:var(--gold);">Same-Game Power4s</h3>
+<!-- P4s Pane -->
+<div id="pane-p4" class="pane active">
+    <h2 style="color: var(--gold); margin-bottom: 16px;">Same-Game Power 4s</h2>
     {% set data = report.full_report %}
-    {% for game in data.same_game_p4 or [] %}
-    <div class="card">
-        <strong>{{ game.game }}</strong>
-        {% for p in game.alpha or [] %}{{ player_card(p) }}{% endfor %}
-    </div>
-    {% endfor %}
+    {% if data.same_game_p4 and data.same_game_p4|length > 0 %}
+        {% for game in data.same_game_p4 %}
+        <div class="card">
+            <strong style="color: var(--gold);">{{ game.game }}</strong>
+            {% for p in game.alpha or [] %}
+                {{ player_card(p) }}
+            {% endfor %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <p style="color: var(--muted);">No same-game P4s available yet.</p>
+    {% endif %}
 </div>
 
-<div id="pane-slips" class="pane" style="padding:20px;">
-    <h3 style="color:var(--gold);">Recommended Slips</h3>
-    {% for size in ['2','3','4','5'] %}
-        {% set slips = data.slips.get(size, []) %}
-        {% if slips %}
-        <h4>{{ size }}-Leg</h4>
-        {% for slip in slips %}
+<!-- Slips Pane -->
+<div id="pane-slips" class="pane">
+    <h2 style="color: var(--gold); margin-bottom: 16px;">Recommended Slips</h2>
+    {% set data = report.full_report %}
+    {% for size in ['2', '3', '4', '5'] %}
+        {% set slip_list = data.slips.get(size, []) %}
+        {% if slip_list %}
+        <h3 style="margin: 20px 0 12px; color: var(--purple);">{{ size }}-Leg Slips</h3>
+        {% for slip in slip_list %}
         <div class="card">
-            <strong>Total Proj {{ slip.total_proj }} | Win {{ slip.win_prob }}% | EV ${{ slip.ev }}</strong>
+            <div style="margin-bottom: 10px; font-weight: 600;">
+                Total Proj: {{ slip.total_proj }} | Win Prob: {{ slip.win_prob }}% | EV: ${{ slip.ev }}
+            </div>
             {% for name in slip.players %}
-                {% for p in data.top_overs if p.name == name %}{{ player_card(p) }}{% endfor %}
+                {% for p in data.top_overs if p.name == name %}
+                    {{ player_card(p) }}
+                {% endfor %}
             {% endfor %}
         </div>
         {% endfor %}
@@ -86,21 +196,53 @@
     {% endfor %}
 </div>
 
-<div id="pane-all" class="pane" style="padding:20px;">
-    <h3 style="color:var(--gold);">All Props ({{ (data.top_overs|length + data.top_unders|length) }})</h3>
+<!-- Top Locks Pane -->
+<div id="pane-locks" class="pane">
+    <h2 style="color: var(--gold); margin-bottom: 16px;">Top Locks</h2>
+    {% set data = report.full_report %}
+    {% if data.top_locks %}
+        {% for p in data.top_locks %}
+            {{ player_card(p) }}
+        {% endfor %}
+    {% else %}
+        <p style="color: var(--muted);">No top locks available yet.</p>
+    {% endif %}
+</div>
+
+<!-- All Props Pane -->
+<div id="pane-all" class="pane">
+    <h2 style="color: var(--gold); margin-bottom: 16px;">All Props ({{ (data.top_overs|length + data.top_unders|length) }})</h2>
+    {% set data = report.full_report %}
     {% for p in (data.top_overs or []) + (data.top_unders or []) %}
         {{ player_card(p) }}
     {% endfor %}
 </div>
 
 <script>
-    document.querySelectorAll('.tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
-            tab.classList.add('active');
-            document.getElementById(tab.getAttribute('data-pane')).classList.add('active');
+    document.addEventListener('DOMContentLoaded', function() {
+        const tabs = document.querySelectorAll('.tab');
+        const panes = document.querySelectorAll('.pane');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Remove active from all tabs and panes
+                tabs.forEach(t => t.classList.remove('active'));
+                panes.forEach(p => p.classList.remove('active'));
+
+                // Activate clicked tab and corresponding pane
+                this.classList.add('active');
+                const targetId = this.getAttribute('data-pane');
+                const targetPane = document.getElementById(targetId);
+                if (targetPane) {
+                    targetPane.classList.add('active');
+                }
+            });
         });
+
+        // Activate first tab by default
+        if (tabs.length > 0) {
+            tabs[0].click();
+        }
     });
 </script>
 
