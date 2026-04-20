@@ -20,6 +20,10 @@ OUTPUT_IMG  = "data/mackin_cheatsheet.png"
 SIM_RUNS = 1200
 PAYOUTS = {4: 10, 6: 25, 8: 100}
 
+# ====================== PLAYOFF ADJUSTMENT ======================
+PLAYOFF_MULTIPLIER = 0.89   # Lower for shorter minutes / slower playoff pace
+# ============================================================
+
 def load_prizepicks_lines():
     lines = {}
     if not os.path.exists(APIFY_CSV):
@@ -55,15 +59,17 @@ def load_prizepicks_lines():
         return {}
 
 def simulate_hit_rate(proj, line, std=3.2):
+    """Monte Carlo simulation → hit_rate (0-100) and confidence (1-10)"""
     if line <= 0: return 0.5
     sims = np.random.normal(proj, std, SIM_RUNS)
     return np.mean(sims > line)
 
-def dvp_boost(dvp):
-    if dvp >= 24: return 1.08
-    if dvp >= 19: return 1.05
-    if dvp <= 11: return 0.95
-    return 1.0
+def get_matchup_grade(dvp):
+    if dvp >= 23: return {"grade": "A+", "color": "#10b981"}
+    if dvp >= 19: return {"grade": "A", "color": "#10b981"}
+    if dvp >= 15: return {"grade": "B+", "color": "#f59e0b"}
+    if dvp >= 11: return {"grade": "B", "color": "#f59e0b"}
+    return {"grade": "C", "color": "#ef4444"}
 
 def build_players(df, lines):
     players = []
@@ -75,12 +81,12 @@ def build_players(df, lines):
         game_key = f"{team} vs {opp}"
         dvp = float(r.get("DVP", 15.0))
 
-        # Base from fallback (primary) - realistic ratios
+        # Base from fallback.csv (regular season) → apply playoff adjustment
         base_pts = float(r.get("Projection", 0)) or float(r.get("PTS", 0))
         base_reb = float(r.get("REB", base_pts * 0.32))
         base_ast = float(r.get("AST", base_pts * 0.26))
         base_pra = base_pts + base_reb + base_ast
-        base_fs  = base_pra * 1.1 + float(r.get("STL", 1.2)) * 3 + float(r.get("BLK", 0.8)) * 3  # rough fantasy score estimate
+        base_fs  = base_pra * 1.1 + float(r.get("STL", 1.2)) * 3 + float(r.get("BLK", 0.8)) * 3
 
         stat_bases = {
             "PTS": min(base_pts, 36),
@@ -88,22 +94,21 @@ def build_players(df, lines):
             "AST": min(base_ast, 16),
             "PRA": min(base_pra, 62),
             "FS":  min(base_fs,  55),
-            "FG":  min(base_pts / 2.2, 12),   # rough FG made estimate
-            "FGA": min(base_pts / 1.8, 18),   # rough FG attempts
-            "DREB": min(base_reb * 0.75, 14), # defensive rebounds ~75% of total
+            "FG":  min(base_pts / 2.2, 12),
+            "FGA": min(base_pts / 1.8, 18),
+            "DREB": min(base_reb * 0.75, 14),
             "DUNKS": min(float(r.get("DUNKS", 0.8)), 4)
         }
 
         for stat, base_proj in stat_bases.items():
             if base_proj < 4 and stat not in ["DUNKS", "FG", "FGA"]: continue
-            if base_proj < 0.5 and stat in ["DUNKS"]: continue
+            if base_proj < 0.5 and stat == "DUNKS": continue
 
-            # Overlay Apify posted line if available
             posted = lines.get(name, {}).get(stat)
             line = posted if posted and posted > 0 else round(base_proj * 1.04, 1)
 
-            boost = dvp_boost(dvp)
-            proj = round(base_proj * boost, 1)
+            # Apply playoff adjustment here
+            proj = round(base_proj * PLAYOFF_MULTIPLIER * dvp_boost(dvp), 1)
 
             std = max(2.4, proj * 0.28)
             hit_rate = simulate_hit_rate(proj, line, std)
@@ -111,6 +116,7 @@ def build_players(df, lines):
 
             confidence = min(10, int(hit_rate * 10 + 1.3))
             rec = "OVER" if edge > 6 else "UNDER" if edge < -6 else "EVEN"
+            grade = get_matchup_grade(dvp)
 
             players.append({
                 "name": name,
@@ -124,10 +130,11 @@ def build_players(df, lines):
                 "hit_rate": round(hit_rate * 100, 1),
                 "dvp": round(dvp, 1),
                 "confidence": confidence,
-                "recommended_pick": rec
+                "recommended_pick": rec,
+                "matchup_grade": grade   # ← now back for cards
             })
-            if len(players) > 200: break   # safety cap
-    logger.info(f"Built {len(players)} props including FS, FG, FGA, DREB, Dunks")
+            if len(players) > 200: break
+    logger.info(f"Built {len(players)} playoff-adjusted props (FS, FG, FGA, DREB, Dunks)")
     return players
 
 def rank_props(players):
@@ -163,7 +170,7 @@ def create_cheatsheet(top_over, top_under):
     except:
         font_title = font = small = ImageFont.load_default()
     draw.text((60, 40), "MACKIN BETZ CHEATSHEET", fill="#c026d3", font=font_title)
-    draw.text((60, 110), datetime.now().strftime("%B %d, %Y • NBA Props"), fill="#94a3b8", font=small)
+    draw.text((60, 110), datetime.now().strftime("%B %d, %Y • NBA PLAYOFFS"), fill="#94a3b8", font=small)
     y = 180
     draw.text((60, y), "🔥 TOP OVERS", fill="#4ade80", font=font)
     y += 55
@@ -189,7 +196,6 @@ def run_daily_scrape():
         players = build_players(df, lines)
         top_overs, top_unders = rank_props(players)
 
-        # Improved same-game P4s
         game_groups = defaultdict(list)
         for p in top_overs:
             if p["hit_rate"] >= 76:
@@ -216,7 +222,7 @@ def run_daily_scrape():
         with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2)
         create_cheatsheet(top_overs, top_unders)
-        logger.info("✅ Report generated with expanded props (FS, FG, FGA, DREB, Dunks)")
+        logger.info("✅ Report generated with playoff adjustment + matchup grades")
         return report
     except Exception as e:
         logger.error(f"run_daily_scrape failed: {e}", exc_info=True)
