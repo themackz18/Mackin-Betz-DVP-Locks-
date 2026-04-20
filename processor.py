@@ -17,11 +17,11 @@ APIFY_CSV   = os.getenv("APIFY_CSV", "data/apify_prizepicks.csv")
 OUTPUT_JSON = "data/mackin_report.json"
 OUTPUT_IMG  = "data/mackin_cheatsheet.png"
 
-SIM_RUNS = 1000   # Slightly lower for speed
+SIM_RUNS = 1000
 PAYOUTS = {4: 10, 6: 25, 8: 100}
 
 # ====================== STRONGER PLAYOFF ADJUSTMENT ======================
-PLAYOFF_MULTIPLIER = 0.78   # Aggressive reduction for playoff minutes/pace
+PLAYOFF_MULTIPLIER = 0.72   # Aggressive for playoff minutes and pace
 # =======================================================================
 
 def load_prizepicks_lines():
@@ -64,9 +64,9 @@ def simulate_hit_rate(proj, line, std=3.1):
     return np.mean(sims > line)
 
 def dvp_boost(dvp):
-    if dvp >= 24: return 1.07
-    if dvp >= 19: return 1.04
-    if dvp <= 11: return 0.96
+    if dvp >= 24: return 1.06
+    if dvp >= 19: return 1.03
+    if dvp <= 11: return 0.97
     return 1.0
 
 def get_matchup_grade(dvp):
@@ -86,7 +86,6 @@ def build_players(df, lines):
         game_key = f"{team} vs {opp}"
         dvp = float(r.get("DVP", 15.0))
 
-        # Base from fallback → strong playoff reduction
         base_pts = float(r.get("Projection", 0)) or float(r.get("PTS", 0))
         base_reb = float(r.get("REB", base_pts * 0.32))
         base_ast = float(r.get("AST", base_pts * 0.26))
@@ -94,31 +93,32 @@ def build_players(df, lines):
         base_fs  = base_pra * 1.05 + float(r.get("STL", 1.0)) * 3 + float(r.get("BLK", 0.7)) * 3
 
         stat_bases = {
-            "PTS": min(base_pts, 33),
-            "REB": min(base_reb, 16.5),
-            "AST": min(base_ast, 14),
-            "PRA": min(base_pra, 52),
-            "FS":  min(base_fs,  48),
-            "FG":  min(base_pts / 2.4, 10.5),
-            "FGA": min(base_pts / 2.0, 16),
-            "DREB": min(base_reb * 0.72, 12),
-            "DUNKS": min(float(r.get("DUNKS", 0.5)), 3)
+            "PTS": min(base_pts, 32),
+            "REB": min(base_reb, 16),
+            "AST": min(base_ast, 13.5),
+            "PRA": min(base_pra, 50),
+            "FS":  min(base_fs,  46),
+            "FG":  min(base_pts / 2.5, 10),
+            "FGA": min(base_pts / 2.1, 15.5),
+            "DREB": min(base_reb * 0.72, 11.5),
+            "DUNKS": min(float(r.get("DUNKS", 0.4)), 2.8)
         }
 
         for stat, base_proj in stat_bases.items():
             if base_proj < 3 and stat not in ["DUNKS", "FG"]: continue
 
+            # Prefer Apify posted line strongly
             posted = lines.get(name, {}).get(stat)
-            line = posted if posted and posted > 0 else round(base_proj * 1.02, 1)  # minimal buffer
+            line = posted if posted and posted > 0 else round(base_proj * 1.01, 1)
 
             proj = round(base_proj * PLAYOFF_MULTIPLIER * dvp_boost(dvp), 1)
 
-            std = max(2.3, proj * 0.30)
+            std = max(2.3, proj * 0.31)
             hit_rate = simulate_hit_rate(proj, line, std)
             edge = round(((proj - line) / line * 100) if line > 0 else 0, 1)
 
-            confidence = min(10, int(hit_rate * 10 + 1.0))
-            rec = "OVER" if edge > 8 else "UNDER" if edge < -8 else "EVEN"
+            confidence = min(9, int(hit_rate * 9.5 + 0.8))  # Cap confidence lower
+            rec = "OVER" if edge > 9 else "UNDER" if edge < -9 else "EVEN"
             grade = get_matchup_grade(dvp)
 
             players.append({
@@ -136,12 +136,9 @@ def build_players(df, lines):
                 "recommended_pick": rec,
                 "matchup_grade": grade
             })
-            if len(players) > 180: break
+            if len(players) > 175: break
     logger.info(f"Built {len(players)} strongly playoff-adjusted props")
     return players
-
-# rank_props, build_slips, create_cheatsheet, run_daily_scrape remain the same as the previous strong version
-# (copy them from the last full file I sent if needed, or keep your existing ones — the main change is in build_players)
 
 def rank_props(players):
     overs = sorted(players, key=lambda x: x["hit_rate"], reverse=True)[:65]
@@ -149,7 +146,7 @@ def rank_props(players):
     return overs, unders
 
 def build_slips(players, size):
-    candidates = sorted(players, key=lambda x: (x["hit_rate"], x["edge"]), reverse=True)[:23]
+    candidates = sorted(players, key=lambda x: (x["hit_rate"], x["edge"]), reverse=True)[:22]
     slips = []
     for combo in combinations(candidates, size):
         names = [p["name"] for p in combo]
@@ -167,7 +164,6 @@ def build_slips(players, size):
     return sorted(slips, key=lambda x: x["ev"], reverse=True)[:9]
 
 def create_cheatsheet(top_over, top_under):
-    # (same as previous version)
     img = Image.new("RGB", (1100, 980), (20, 20, 28))
     draw = ImageDraw.Draw(img)
     try:
@@ -205,7 +201,7 @@ def run_daily_scrape():
 
         game_groups = defaultdict(list)
         for p in top_overs:
-            if p["hit_rate"] >= 72 and p["confidence"] >= 5:
+            if p["hit_rate"] >= 70 and p["confidence"] >= 5:
                 game_groups[p["game"]].append(p)
         same_game_p4 = [{"game": g, "alpha": sorted(ps, key=lambda x: x["hit_rate"], reverse=True)[:6]} 
                         for g, ps in game_groups.items() if len(ps) >= 3]
@@ -222,14 +218,14 @@ def run_daily_scrape():
             "top_overs": top_overs,
             "top_unders": top_unders,
             "top_locks": [p for p in top_overs if p["confidence"] >= 7][:25],
-            "ev_unders": [p for p in top_unders if p["edge"] < -7][:15]
+            "ev_unders": [p for p in top_unders if p["edge"] < -8][:15]
         }
 
         os.makedirs(DATA_DIR, exist_ok=True)
         with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2)
         create_cheatsheet(top_overs, top_unders)
-        logger.info("✅ Report generated with stronger playoff adjustment (0.78)")
+        logger.info("✅ Report generated with aggressive playoff adjustment (0.72 multiplier)")
         return report
     except Exception as e:
         logger.error(f"run_daily_scrape failed: {e}", exc_info=True)
