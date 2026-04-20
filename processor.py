@@ -10,13 +10,13 @@ from PIL import Image, ImageDraw, ImageFont
 logger = logging.getLogger(__name__)
 
 DATA_DIR = "data"
-FALLBACK_CSV = os.getenv("FALLBACK_CSV", "data/fallback.csv")   # Your lineups.com CSV
-APIFY_CSV   = os.getenv("APIFY_CSV", "data/apify_prizepicks.csv")  # Apify export
+FALLBACK_CSV = os.getenv("FALLBACK_CSV", "data/fallback.csv")
+APIFY_CSV   = os.getenv("APIFY_CSV", "data/apify_prizepicks.csv")
 
 OUTPUT_JSON = "data/mackin_report.json"
 OUTPUT_IMG  = "data/mackin_cheatsheet.png"
 
-SIM_RUNS = 5000
+SIM_RUNS = 2000   # Reduced from 5000 to save memory
 PAYOUTS = {4: 10, 6: 25, 8: 100}
 
 def load_prizepicks_lines():
@@ -110,15 +110,17 @@ def build_players(df, lines):
     return players
 
 def rank_props(players):
-    overs = sorted(players, key=lambda x: x["hit_rate"], reverse=True)
-    unders = sorted([p for p in players if p["edge"] < 0], key=lambda x: x["edge"])
-    return overs[:60], unders[:30]   # More data shown
+    overs = sorted(players, key=lambda x: x["hit_rate"], reverse=True)[:60]
+    unders = sorted([p for p in players if p["edge"] < 0], key=lambda x: x["edge"])[:30]
+    return overs, unders
 
 def build_slips(players, size):
+    """Lightweight version to prevent OOM"""
+    candidates = sorted(players, key=lambda x: x["hit_rate"], reverse=True)[:25]  # Top 25 only
     slips = []
-    for combo in combinations(players[:80], size):   # Larger pool
+    for combo in combinations(candidates, size):
         names = [p["name"] for p in combo]
-        if len(set(names)) < size: continue   # No duplicate players in one slip
+        if len(set(names)) < size: continue
         prob = 1.0
         for p in combo:
             prob *= (p["hit_rate"] / 100.0)
@@ -130,7 +132,7 @@ def build_slips(players, size):
             "ev": round(ev, 2),
             "target_prop": "PRA"
         })
-    return sorted(slips, key=lambda x: x["ev"], reverse=True)[:15]
+    return sorted(slips, key=lambda x: x["ev"], reverse=True)[:12]
 
 def create_cheatsheet(top_over, top_under):
     img = Image.new("RGB", (1050, 920), (20, 20, 28))
@@ -222,7 +224,7 @@ def run_daily_scrape():
             json.dump(report, f, indent=2)
 
         create_cheatsheet(top_over, top_under)
-        logger.info("✅ Full report generated (Apify lines + lineups.com data)")
+        logger.info("✅ Report generated successfully")
         return report
     except Exception as e:
         logger.error(f"run_daily_scrape failed: {e}", exc_info=True)
