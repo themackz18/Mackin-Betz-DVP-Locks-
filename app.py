@@ -3,7 +3,6 @@ import logging
 from datetime import datetime
 from flask import Flask, render_template, redirect, url_for, send_from_directory
 
-# Import processor
 from processor import run_daily_scrape, OUTPUT_JSON, OUTPUT_IMG, DATA_DIR
 
 logging.basicConfig(level=logging.INFO)
@@ -16,10 +15,9 @@ def get_report():
     
     try:
         report = run_daily_scrape()
-        logger.info("✅ Report generated successfully from CSV data")
+        logger.info("✅ Report generated successfully")
     except Exception as e:
         logger.error(f"Processing failed: {e}", exc_info=True)
-        # Safe fallback so template never crashes
         report = {
             "error": str(e),
             "generated_at": datetime.now().isoformat(),
@@ -46,7 +44,7 @@ def index():
 
 @app.route("/refresh")
 def refresh():
-    get_report()  # Force fresh data
+    get_report()
     return redirect("/")
 
 @app.route("/cheatsheet")
