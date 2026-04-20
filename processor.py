@@ -21,7 +21,7 @@ SIM_RUNS = 1200
 PAYOUTS = {4: 10, 6: 25, 8: 100}
 
 # ====================== PLAYOFF ADJUSTMENT ======================
-PLAYOFF_MULTIPLIER = 0.89   # Lower for shorter minutes / slower playoff pace
+PLAYOFF_MULTIPLIER = 0.89   # Lower for shorter playoff minutes / slower pace
 # ============================================================
 
 def load_prizepicks_lines():
@@ -59,10 +59,15 @@ def load_prizepicks_lines():
         return {}
 
 def simulate_hit_rate(proj, line, std=3.2):
-    """Monte Carlo simulation → hit_rate (0-100) and confidence (1-10)"""
     if line <= 0: return 0.5
     sims = np.random.normal(proj, std, SIM_RUNS)
     return np.mean(sims > line)
+
+def dvp_boost(dvp):   # ← THIS WAS MISSING
+    if dvp >= 24: return 1.08
+    if dvp >= 19: return 1.05
+    if dvp <= 11: return 0.95
+    return 1.0
 
 def get_matchup_grade(dvp):
     if dvp >= 23: return {"grade": "A+", "color": "#10b981"}
@@ -81,7 +86,7 @@ def build_players(df, lines):
         game_key = f"{team} vs {opp}"
         dvp = float(r.get("DVP", 15.0))
 
-        # Base from fallback.csv (regular season) → apply playoff adjustment
+        # Base from fallback.csv → apply playoff adjustment
         base_pts = float(r.get("Projection", 0)) or float(r.get("PTS", 0))
         base_reb = float(r.get("REB", base_pts * 0.32))
         base_ast = float(r.get("AST", base_pts * 0.26))
@@ -107,7 +112,6 @@ def build_players(df, lines):
             posted = lines.get(name, {}).get(stat)
             line = posted if posted and posted > 0 else round(base_proj * 1.04, 1)
 
-            # Apply playoff adjustment here
             proj = round(base_proj * PLAYOFF_MULTIPLIER * dvp_boost(dvp), 1)
 
             std = max(2.4, proj * 0.28)
@@ -131,7 +135,7 @@ def build_players(df, lines):
                 "dvp": round(dvp, 1),
                 "confidence": confidence,
                 "recommended_pick": rec,
-                "matchup_grade": grade   # ← now back for cards
+                "matchup_grade": grade
             })
             if len(players) > 200: break
     logger.info(f"Built {len(players)} playoff-adjusted props (FS, FG, FGA, DREB, Dunks)")
